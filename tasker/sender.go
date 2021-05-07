@@ -458,6 +458,8 @@ func (s *Sender) sS3FFFFF0004(da []byte, r *file.Rd) error {
 		sb = int64(da[i-9])<<32 + int64(da[i-8])<<24 + int64(da[i-7])<<16 + int64(da[i-6])<<8 + int64(da[i-5])
 		eb = int64(da[i-4])<<32 + int64(da[i-3])<<24 + int64(da[i-2])<<16 + int64(da[i-1])<<8 + int64(da[i-0])
 
+		fmt.Println("-----------重发-----------", sb, eb)
+
 		for i := sb; i <= eb; i = i + int64(s.mtu) {
 			if int64(s.mtu)+i-1 > eb {
 				d = make([]byte, eb-i+1)
