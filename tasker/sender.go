@@ -418,9 +418,7 @@ func (s *Sender) sSFileDataPacket(fh *os.File, fs int64) (int64, error) {
 				ch <- err
 				return
 			}
-			if sEnd { // 主进程发送结束
-				break
-			}
+
 			bias = bias + dl
 			time.Sleep(s.ts) // 速度控制
 			if sEnd {
