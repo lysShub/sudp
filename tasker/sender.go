@@ -427,7 +427,13 @@ func (s *Sender) sSFileDataPacket(fh *os.File, fs int64) (int64, error) {
 				// 由于收到之后的数据包后才会重发之前缺失的数据，如果最后包没有到达，则会导致传输挂起
 				for {
 					fmt.Println("------------------------------------发送完成-------------------------------")
-
+					if len(reSend) != 0 {
+						for i := 0; i < len(reSend); i++ {
+							if err = s.sS3FFFFF0004(<-reSend, r); e.Errlog(err) {
+								continue
+							}
+						}
+					}
 					time.Sleep(time.Millisecond * 500)
 					if _, err = s.conn.Write(d); e.Errlog(err) {
 						ch <- err
