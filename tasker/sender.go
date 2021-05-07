@@ -332,6 +332,7 @@ func (s *Sender) sSFileDataPacket(fh *os.File, fs int64) (int64, error) {
 		var da []byte
 		var bias, dl int64
 		var l int
+
 		for flag {
 
 			da = make([]byte, 1500)
