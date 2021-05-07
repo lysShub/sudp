@@ -336,7 +336,7 @@ func (s *Sender) sSFileDataPacket(fh *os.File, fs int64) (int64, error) {
 		for flag {
 
 			da = make([]byte, 1500)
-			if err = s.conn.SetReadDeadline(time.Now().Add(s.replyTimeOut * 15)); e.Errlog(err) {
+			if err = s.conn.SetReadDeadline(time.Now().Local().Add(s.replyTimeOut * 15)); e.Errlog(err) {
 				ch <- err
 				return
 			}

@@ -411,7 +411,7 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 	go func() { // 重发
 		for flag {
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 4000)
 			if re := rec.Owe(0); len(re) > 0 || end {
 				if err = r.rS3FFFFF0004(re); e.Errlog(err) {
 					ch <- err
@@ -495,10 +495,6 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 	}
 }
 
-var count int = 0
-
-// newSpeed 返回新速度
-//  累加，呈指数或线性增加，累减或未达标、变为当前速度
 func (r *Receiver) newSpeed() int {
 
 	var ns int
@@ -509,28 +505,15 @@ func (r *Receiver) newSpeed() int {
 
 	if r.speedsRecorder[r.feedbackLength-1]-thisSpeed == 0 || r.speedsRecorder[r.feedbackLength-1]/(r.speedsRecorder[r.feedbackLength-1]-thisSpeed) > 17 || thisSpeed/(r.Speed-r.speedsRecorder[r.feedbackLength-1]) > 17 { // 达到预期
 		// 检测是否累加
-		var add bool = true
-		for i := 1; i < r.feedbackLength; i++ {
-			if add && r.speedsRecorder[i-1] > r.speedsRecorder[i] {
-				add = false
-			}
-		}
-		if add {
-			// ns = thisSpeed + 2*(r.speedsRecorder[r.feedbackLength-1]-r.speedsRecorder[r.feedbackLength-2])
-			ns = thisSpeed + thisSpeed/2
-
-		} else {
-			ns = thisSpeed + 10240
-
-		}
+		ns = thisSpeed * 2
 	} else { // 未达预期
-		ns = thisSpeed + 1024
+		if r.speedsRecorder[r.feedbackLength-1]-thisSpeed > 1048576 {
+			ns = thisSpeed + (r.speedsRecorder[r.feedbackLength-1]-thisSpeed)/2
+		} else {
+			ns = thisSpeed + 1024
+		}
 	}
 	r.speedsRecorder = append(r.speedsRecorder[1:], ns)
 
 	return ns
 }
-
-//  参数true代表速度增加、即速度变量为正，否则为负，当此轮接收到的数据中缺失的数据大于一定值时、参数就会为false。  传入参数的正负与之前n个参数相比较，如果同号则步长变为2倍。否则以min step的步长增或减(表明此时传输速度与实际带宽相当了)。
-//
-//  初始化时：最开始的前n个始终记录为0、速度不变(不考虑传输参数的正负)；之后将按照上面的规则进行变换；无论初始速度与实际速度是过大还是过小，都会以指数倍率控制传输速度到相当的速度。

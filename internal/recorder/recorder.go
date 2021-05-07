@@ -93,6 +93,9 @@ func (r *Recorder) Owe(CountRange int) [][2]int64 {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	var l int = len(r.rec)
+	if l < 4 {
+		return nil
+	}
 
 	// end := r.rec[l-1] - int64(CountRange)
 	end := r.rec[l-1]
