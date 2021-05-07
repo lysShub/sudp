@@ -401,8 +401,8 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 			// 速度控制
 			n := r.newSpeed()
-			fmt.Println("新速度", n)
-			// fmt.Println("实速度", r.Speed)
+			fmt.Println("速度", n, r.Speed)
+
 			if err = r.rS3FFFFF0010(n); e.Errlog(err) {
 				fmt.Println(err)
 			}
