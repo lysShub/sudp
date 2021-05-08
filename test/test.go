@@ -16,7 +16,7 @@ func main() {
 	// 172.30.0.1:49529
 
 	t := new(tasker.Tasker)
-	t.Addr = &net.UDPAddr{IP: nil, Port: 19986} // net.ParseIP("172.30.0.1")
+	t.Addr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986} // net.ParseIP("172.30.0.1")
 	t.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
 
 	fmt.Println(t.Receive(&net.UDPAddr{IP: nil, Port: 19986}, []byte("11")))

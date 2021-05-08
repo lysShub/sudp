@@ -408,7 +408,7 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 	go func() { // 重发
 		for flag {
-			time.Sleep(time.Millisecond * 1000)
+			time.Sleep(time.Millisecond * 500)
 			if re := rec.Owe(0); len(re) > 0 || end {
 				if err = r.rS3FFFFF0004(re); e.Errlog(err) {
 					ch <- err
@@ -494,7 +494,7 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 func (r *Receiver) newSpeed() int {
 
-	return 5242880 * 4
+	// return 5242880 * 4
 
 	var ns int
 	var thisSpeed = r.Speed
