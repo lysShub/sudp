@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"sudp/tasker"
 )
 
 func main() {
+	http.ListenAndServe(":8000", http.FileServer(http.Dir("../../tmp/r/")))
+	return
 
 	// 发送
 	t := new(tasker.Tasker)
