@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sudp/internal/com"
+	"time"
 
 	"github.com/lysShub/e"
 )
@@ -16,9 +17,11 @@ import (
 // Tasker 代表一个传输任务
 //
 type Tasker struct {
-	Addr     *net.UDPAddr // 对于接收发是发送方公网地址(不可省略)。对于发送方是自己的内网地址(通常IP为nil、默认端口19986)
-	Encrypto bool         // 是否将加密传输, 仅发送方
-	Path     string       // 对于接收方的存储文件夹路径。对于发送方是发送的文件(夹)路径(不可省略)。
+	Addr         *net.UDPAddr  // 对于接收发是发送方公网地址(不可省略)。对于发送方是自己的内网地址(通常IP为nil、默认端口19986)
+	Encrypto     bool          // 是否将加密传输, 仅发送方
+	Path         string        // 对于接收方的存储文件夹路径。对于发送方是发送的文件(夹)路径(不可省略)。
+	conn         *net.UDPConn  // udp conn
+	matchTimeOut time.Duration //
 
 	Sender
 	Receiver

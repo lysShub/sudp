@@ -1,13 +1,18 @@
 package sudp
 
-var Version uint8 = 0
+import (
+	"net"
+	"time"
+)
 
 type SUDP struct {
-	Version uint8 // sudp 版本
+	Encrypt bool
+	MTU     int
 
-	// storepath string // 接收端储存路径(文件夹、必须已存在)
-
-	//
-	//
-	// Receive
+	conn    *net.UDPConn
+	timeOut time.Duration
+	key     []byte
 }
+
+var Version uint8 = 0b00000001
+var err error
