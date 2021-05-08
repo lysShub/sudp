@@ -5,8 +5,10 @@ package sudp
 import (
 	"crypto/md5"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sudp/internal/crypter"
 	"sudp/internal/packet"
 	"time"
@@ -20,12 +22,12 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 	if s.conn, err = net.DialUDP("udp", laddr, raddr); e.Errlog(err) {
 		return err
 	}
-	var ch chan error = make(chan error, 1)
 	var flag bool = true
 	defer func() { flag = false }()
 	var n int
 
 	// 回复
+	var ch chan error = make(chan error, 1)
 	go func() {
 		for flag {
 			if _, err = s.conn.Write(sda); err != nil {
@@ -46,7 +48,7 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 	var step int = 0
 	time.AfterFunc(s.TimeOut, func() {
 		if step < 1 {
-			ch <- errors.New("timeout")
+			fmt.Println("关闭conn")
 			s.conn.Close()
 		}
 	})
@@ -93,7 +95,6 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 	// 确认确认握手
 	time.AfterFunc(s.TimeOut, func() {
 		if step < 2 {
-			ch <- errors.New("timeout")
 			s.conn.Close()
 		}
 	})
@@ -102,9 +103,14 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 			return <-ch
 		}
 		rda = make([]byte, 1500)
-		if n, err = s.conn.Read(rda); e.Errlog(err) {
-			return err
+		if n, err = s.conn.Read(rda); err != nil {
+			if strings.Contains(err.Error(), "closed") {
+				return errors.New("timeout")
+			} else if e.Errlog(err) {
+				return err
+			}
 		}
+
 		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
 			return err
 		} else if bias == 0x3FFFFF2000 {
@@ -119,6 +125,8 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 				s.key = nil
 			}
 			break
+		} else {
+			fmt.Println("确认确认握手收到", bias)
 		}
 	}
 
@@ -135,7 +143,6 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) bool) error {
 	var rda, sda []byte = make([]byte, 1500), nil
 	var n int
-	var ch chan error = make(chan error, 1)
 	var flag bool = true
 	defer func() { flag = false }()
 
@@ -175,6 +182,7 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 	}
 
 	/* 回复 */
+	var ch chan error = make(chan error, 1)
 	go func() {
 		for flag {
 			if _, err = s.conn.Write(sda); e.Errlog(err) {
@@ -189,18 +197,26 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 	var step int = 0
 	time.AfterFunc(s.TimeOut, func() {
 		if step < 1 {
-			ch <- errors.New("timeout")
 			s.conn.Close()
 		}
 	})
 	for {
-		if len(ch) == 0 {
+		if len(ch) != 0 {
 			return <-ch
 		}
 		rda = make([]byte, 1500)
-		if n, err = s.conn.Read(rda); e.Errlog(err) {
+		if n, err = s.conn.Read(rda); err != nil {
+			if strings.Contains(err.Error(), "closed") {
+				return errors.New("timeout")
+			} else if e.Errlog(err) {
+				return err
+			}
+		}
+
+		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
 			return err
-		} else if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); err == nil && bias == 0x3FFFFF4000 {
+
+		} else if bias == 0x3FFFFF4000 {
 			if rda[0] != 0 { // 握手代码
 				return errors.New("HandshakeCode: " + strconv.Itoa(int(rda[0])))
 			}
@@ -223,17 +239,20 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 	// 任务开始包
 	time.AfterFunc(s.TimeOut, func() {
 		if step < 2 {
-			ch <- errors.New("timeout")
 			s.conn.Close()
 		}
 	})
 	for {
-		if len(ch) == 0 {
+		if len(ch) != 0 {
 			return <-ch
 		}
 		rda = make([]byte, 1500)
-		if n, err = s.conn.Read(rda); e.Errlog(err) {
-			return err
+		if n, err = s.conn.Read(rda); err != nil {
+			if strings.Contains(err.Error(), "closed") {
+				return errors.New("timeout")
+			} else if e.Errlog(err) {
+				return err
+			}
 		}
 		if _, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
 			return err
