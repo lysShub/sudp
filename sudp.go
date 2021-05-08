@@ -8,10 +8,10 @@ import (
 type SUDP struct {
 	Encrypt bool
 	MTU     int
+	TimeOut time.Duration
 
-	conn    *net.UDPConn
-	timeOut time.Duration
-	key     []byte
+	conn *net.UDPConn
+	key  []byte
 }
 
 var Version uint8 = 0b00000001

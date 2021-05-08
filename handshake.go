@@ -44,7 +44,7 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 	// 握手
 	var priKey []byte
 	var step int = 0
-	time.AfterFunc(s.timeOut, func() {
+	time.AfterFunc(s.TimeOut, func() {
 		if step < 1 {
 			ch <- errors.New("timeout")
 			s.conn.Close()
@@ -91,7 +91,7 @@ func (s *SUDP) SendHandshake(laddr, raddr *net.UDPAddr, requestBody []byte) erro
 	}
 
 	// 确认确认握手
-	time.AfterFunc(s.timeOut, func() {
+	time.AfterFunc(s.TimeOut, func() {
 		if step < 2 {
 			ch <- errors.New("timeout")
 			s.conn.Close()
@@ -139,7 +139,6 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 	var flag bool = true
 	defer func() { flag = false }()
 
-	// 接收请求
 	if s.conn, err = net.ListenUDP("udp", laddr); e.Errlog(err) {
 		return err
 	}
@@ -165,6 +164,16 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 		return err
 	}
 
+	// 握手
+	var isEncrypto uint8 = 0x0
+	if s.Encrypt {
+		isEncrypto = 0xf
+		s.key = s.createKey()
+	}
+	if sda, _, _, err = packet.PackageDataPacket([]byte{Version, uint8(s.MTU >> 8), uint8(s.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
+		return err
+	}
+
 	/* 回复 */
 	go func() {
 		for flag {
@@ -176,19 +185,9 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 		}
 	}()
 
-	// 握手
-	var isEncrypto uint8 = 0x0
-	if s.Encrypt {
-		isEncrypto = 0xf
-		s.key = s.createKey()
-	}
-	if sda, _, _, err = packet.PackageDataPacket([]byte{Version, uint8(s.MTU >> 8), uint8(s.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
-		return err
-	}
-
 	// 确认握手
 	var step int = 0
-	time.AfterFunc(s.timeOut, func() {
+	time.AfterFunc(s.TimeOut, func() {
 		if step < 1 {
 			ch <- errors.New("timeout")
 			s.conn.Close()
@@ -222,7 +221,7 @@ func (s *SUDP) ReceiveHandshake(laddr *net.UDPAddr, f func(requestBody []byte) b
 	}
 
 	// 任务开始包
-	time.AfterFunc(s.timeOut, func() {
+	time.AfterFunc(s.TimeOut, func() {
 		if step < 2 {
 			ch <- errors.New("timeout")
 			s.conn.Close()
