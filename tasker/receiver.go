@@ -335,9 +335,6 @@ func (r *Receiver) rS3FFFFF00FF() error {
 
 // sS3FFFFF0004 回复文件重发包
 func (r *Receiver) rS3FFFFF0004(ownRec [][2]int64) error {
-	if len(ownRec) == 0 {
-		return nil
-	}
 	fmt.Println(ownRec)
 
 	var da []byte = make([]byte, 0)
@@ -411,7 +408,7 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 	go func() { // 重发
 		for flag {
-			time.Sleep(time.Millisecond * 4000)
+			time.Sleep(time.Millisecond * 1000)
 			if re := rec.Owe(0); len(re) > 0 || end {
 				if err = r.rS3FFFFF0004(re); e.Errlog(err) {
 					ch <- err
@@ -497,13 +494,15 @@ func (r *Receiver) rRFileDataPacket(fh *os.File, fi int64) error {
 
 func (r *Receiver) newSpeed() int {
 
+	return 5242880 * 4
+
 	var ns int
 	var thisSpeed = r.Speed
 	if thisSpeed == 0 {
 		thisSpeed = 5120
 	}
 
-	if r.speedsRecorder[r.feedbackLength-1]-thisSpeed == 0 || r.speedsRecorder[r.feedbackLength-1]/(r.speedsRecorder[r.feedbackLength-1]-thisSpeed) > 17 || thisSpeed/(r.Speed-r.speedsRecorder[r.feedbackLength-1]) > 17 { // 达到预期
+	if r.speedsRecorder[r.feedbackLength-1]-thisSpeed == 0 || r.speedsRecorder[r.feedbackLength-1]/(r.speedsRecorder[r.feedbackLength-1]-thisSpeed) > 15 || thisSpeed/(r.Speed-r.speedsRecorder[r.feedbackLength-1]) > 17 { // 达到预期
 		// 检测是否累加
 		ns = thisSpeed * 2
 	} else { // 未达预期

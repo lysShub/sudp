@@ -4,23 +4,41 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 	"sudp/tasker"
 )
 
 func main() {
-	// &net.UDPAddr{IP: net.ParseIP("114.116.254.26"), Port: 19986},
-	// 收 119.3.166.124
+
+	// 172.30.0.1:49529
+
 	t := new(tasker.Tasker)
-	t.Addr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}
+	t.Addr = &net.UDPAddr{IP: nil, Port: 19986} // net.ParseIP("172.30.0.1")
 	t.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
 
 	fmt.Println(t.Receive(&net.UDPAddr{IP: nil, Port: 19986}, []byte("11")))
 }
 
-// 比较两个文件的差异
 func main1() {
+	// &net.UDPAddr{IP: net.ParseIP("114.116.254.26"), Port: 19986},
+	// 收 119.3.166.124
+
+	go func() {
+		t := new(tasker.Tasker)
+		t.Addr = &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 19986} //172.30.1.211
+		t.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
+
+		fmt.Println(t.Receive(&net.UDPAddr{IP: nil, Port: 19986}, []byte("11")))
+	}()
+
+	http.ListenAndServe(":8080", nil)
+}
+
+// 比较两个文件的差异
+func difference() {
 	fh, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\DSPdsign.7z`)
 	if err != nil {
 		fmt.Println(err)
