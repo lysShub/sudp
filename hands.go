@@ -163,6 +163,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); err == nil {
 			if bias == 0x3FFFFF0000 {
 				if f(rda[:dl]) {
+					w.conn.Close()
 					break // 接受
 				} else {
 					e.Errlog(errors.New("Authentication failed, raddr:" + raddr.String()))
