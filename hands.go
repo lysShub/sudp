@@ -119,6 +119,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				return err
 			} else {
 				r.key = rkey
+				fmt.Println("密钥", r.key)
 			}
 			if encryp {
 				r.fileDataKey = r.key
@@ -174,6 +175,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 
 	// 握手
 	w.key = createKey()
+	fmt.Println("密钥", w.key)
 	var isEncrypto uint8 = 0x0
 	if w.Encrypt {
 		isEncrypto = 0xf
@@ -256,7 +258,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 				return err
 			}
 		}
-		if _, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
+		if _, bias, _, err := packet.ParseDataPacket(rda[:n], w.key); e.Errlog(err) {
 			return err
 		} else if bias == 0x3FFFFF1000 {
 			step = 2
