@@ -3,21 +3,18 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"net"
 	_ "net/http/pprof"
 	"os"
 	"strconv"
-	"sudp"
-	"time"
 )
 
 func main() {
-	s := new(sudp.SUDP)
-	s.Encrypt = true
-	s.MTU = 1237
-	s.TimeOut = time.Second
+	// s := new(sudp.SUDP)
+	// s.Encrypt = true
+	// s.MTU = 1237
+	// s.TimeOut = time.Second
 
-	fmt.Println(s.SendHandshake(&net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}, nil))
+	// fmt.Println(s.SendHandshake(&net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}, nil))
 
 }
 

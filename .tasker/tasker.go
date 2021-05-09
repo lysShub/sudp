@@ -178,5 +178,4 @@ func openFile(path string) (*os.File, error) {
 		}
 	}
 	return fh, nil
-
 }

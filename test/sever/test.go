@@ -1,19 +1,12 @@
 package main
 
-import (
-	"fmt"
-	"net"
-	"sudp"
-	"time"
-)
-
 func main() {
-	s := new(sudp.SUDP)
-	s.Encrypt = true
-	s.MTU = 1237
-	s.TimeOut = time.Second
+	// s := new(sudp.SUDP)
+	// s.Encrypt = true
+	// s.MTU = 1237
+	// s.TimeOut = time.Second
 
-	fmt.Println(s.ReceiveHandshake(&net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}, func(requestBody []byte) bool { return true }))
+	// fmt.Println(s.ReceiveHandshake(&net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}, func(requestBody []byte) bool { return true }))
 }
 
 func main1() {

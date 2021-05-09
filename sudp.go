@@ -1,18 +1,174 @@
 package sudp
 
 import (
+	"errors"
+	"fmt"
 	"net"
+	"os"
+	"sudp/internal/com"
+	"sudp/internal/packet"
 	"time"
+
+	"github.com/lysShub/e"
 )
 
-type SUDP struct {
-	Encrypt bool
-	MTU     int
-	TimeOut time.Duration
+// type Socket interface {
+// 	Write()
+// 	Read()
+// }
 
-	conn *net.UDPConn
-	key  []byte
+type sudp struct {
+	Encrypt  bool          // 是否加密, 默认加密
+	MTU      int           // MTU, 上行/下行不相同, 默认1372
+	TimeOut  time.Duration // 数据包超时时间
+	Path     string        // 路径
+	Schedule int64         // 已传输进度
+	Speed    int           // 当前传输速度 B/s
+	Laddr    *net.UDPAddr  //
+	Raddr    *net.UDPAddr  //
+
+	conn        *net.UDPConn
+	key         []byte // 传输密钥
+	fileDataKey []byte // 文件数据包密钥
 }
 
 var Version uint8 = 0b00000001
 var err error
+
+type read = *sudp
+type write = *sudp
+
+type initFun func(*sudp) *sudp
+
+// NewRead
+func NewRead(f initFun) (read, error) {
+	var y = new(sudp)
+	y.MTU = 1372
+	y.TimeOut = time.Second
+	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
+	y = f(y)
+
+	if y.MTU < 500 || y.MTU > 1500 {
+		return nil, errors.New("invalid MTU")
+	}
+	return y, nil
+}
+
+// Read 接收数据
+func (r read) Read(requestBody []byte) error {
+
+	if err = r.sendHandshake(requestBody); e.Errlog(err) {
+		return err
+	}
+	for {
+		if name, fs, end, err := r.receiverFileInfoOrEndPacket(); e.Errlog(err) {
+			return err
+		} else {
+			if end {
+				e.Errlog(errors.New("任务结束"))
+				return nil
+
+			} else {
+				if fh, err := openFile(r.Path + `/` + name); e.Errlog(err) {
+					return err
+				} else {
+					if err = r.receiveData(fh, fs); e.Errlog(err) { // 读取文件数据
+						return err
+					} else {
+						da, _, _, err := packet.PackageDataPacket(nil, 0x3FFFFF00FF, r.key, false)
+						if e.Errlog(err) {
+							return err
+						} else {
+							for i := 0; i < 5; i++ {
+								if _, err = r.conn.Write(da); e.Errlog(err) {
+									return err
+								}
+							}
+						}
+
+					}
+				}
+
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// NewWrite
+func NewWrite(f initFun) (write, error) {
+	var y = new(sudp)
+	y.Encrypt = true
+	y.MTU = 1372
+	y.TimeOut = time.Second
+	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
+	y = f(y)
+
+	if y.Path == "" {
+		return nil, errors.New("not set Path")
+	}
+	if y.MTU < 500 || y.MTU > 1500 {
+		return nil, errors.New("invalid MTU")
+	}
+	if y.Raddr == nil {
+		return nil, errors.New("not set Raddr")
+	}
+	return y, nil
+}
+
+// Write 发送数据
+//  会阻塞直到收到接收方请求
+func (w write) Write(f func(requestBody []byte) bool) error {
+
+	if ifs, basePath, outFiles, err := com.GetFloderInfo(w.Path); err != nil || len(outFiles) != 0 {
+		if e.Errlog(err) {
+			return err
+		} else {
+			return errors.New("read " + outFiles[0] + " Access is denied.")
+		}
+	} else {
+
+		// 握手
+		if err = w.receiveHandshake(f); e.Errlog(err) {
+			return err
+		}
+		fmt.Println("握手成功")
+
+		// ---------------发送数据-------------------- //
+		var fh *os.File
+		for i, n := range ifs.N {
+			fmt.Println("name", n)
+			if fh, err = os.Open(basePath + `/` + n); e.Errlog(err) {
+				return err
+			}
+
+			if err = w.sendFileInfoAndReceiveStartPacket(n, ifs.S[i]); e.Errlog(err) {
+				return err
+			}
+
+			var sch int64
+			if sch, err = w.sendData(fh, ifs.S[i]); e.Errlog(err) {
+				return err
+			}
+			if sch != ifs.S[i] {
+				fmt.Println("传输中止")
+				return nil
+			}
+		}
+		// 发送任务结束包
+		var da []byte
+		if da, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFFFF00, w.key, false); e.Errlog(err) {
+			return err
+		}
+		for i := 0; i < 10; i++ {
+			if _, err = w.conn.Write(da); e.Errlog(err) {
+				return err
+			}
+		}
+	}
+
+	return nil
+
+}
