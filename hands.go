@@ -95,6 +95,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	// 确认确认握手
 	time.AfterFunc(r.TimeOut, func() {
 		if step < 2 {
+			fmt.Println("关闭确认确认握手")
 			r.conn.Close()
 		}
 	})
@@ -162,7 +163,6 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); err == nil {
 			if bias == 0x3FFFFF0000 {
 				if f(rda[:dl]) {
-					w.conn.Close()
 					break // 接受
 				} else {
 					e.Errlog(errors.New("Authentication failed, raddr:" + raddr.String()))
@@ -203,6 +203,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	var step int = 0
 	time.AfterFunc(w.TimeOut, func() {
 		if step < 1 {
+			fmt.Println("关闭确认握手")
 			w.conn.Close()
 		}
 	})
@@ -245,6 +246,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	// 任务开始包
 	time.AfterFunc(w.TimeOut, func() {
 		if step < 2 {
+			fmt.Println("关闭任务开始包")
 			w.conn.Close()
 		}
 	})

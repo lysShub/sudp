@@ -137,7 +137,7 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 		// ---------------发送数据-------------------- //
 		var fh *os.File
 		for i, n := range ifs.N {
-			fmt.Println("name", n)
+			fmt.Println("发送name", n)
 			if fh, err = os.Open(basePath + `/` + n); e.Errlog(err) {
 				return err
 			}

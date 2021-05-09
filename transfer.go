@@ -305,6 +305,7 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 	var l int
 
 	time.AfterFunc(r.TimeOut, func() {
+		fmt.Println("关闭了r.conn.Close()")
 		r.conn.Close()
 	})
 	for {
@@ -350,6 +351,7 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 	var step int = 0
 	time.AfterFunc(w.TimeOut*2, func() {
 		if step < 1 {
+			fmt.Println("关闭了w.conn")
 			w.conn.Close()
 		}
 	})
