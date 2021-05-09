@@ -303,10 +303,12 @@ func (r *Read) sendSchedulPacket(sch int64) error {
 func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 	var da []byte
 	var l int
+	var flag bool = true
 
-	time.AfterFunc(r.TimeOut, func() {
-		fmt.Println("关闭了r.conn.Close()")
-		r.conn.Close()
+	time.AfterFunc(r.TimeOut*2, func() {
+		if flag {
+			r.conn.Close()
+		}
 	})
 	for {
 		da = make([]byte, 1500)
@@ -320,15 +322,15 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 		if dl, bias, _, err := packet.ParseDataPacket(da[:l], r.key); err == nil {
 
 			if bias == 0x3FFFFF0001 { // 文件信息
-
+				flag = false
 				return string(da[5:dl]), int64(da[0])<<32 + int64(da[1])<<24 + int64(da[2])<<16 + int64(da[3])<<8 + int64(da[4]), false, nil
 
 			} else if bias == 0x3FFFFFFF00 { // 任务结束包
+				flag = false
 				return "", 0, true, nil
 			}
 		}
 	}
-	return "", 0, true, nil
 }
 
 func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
@@ -340,6 +342,7 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 	}
 
 	var flag bool = true
+	defer func() { flag = false }()
 	go func() {
 		for flag {
 			if _, err = w.conn.Write(sda); e.Errlog(err) {
@@ -348,9 +351,10 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 			time.Sleep(time.Millisecond * 10)
 		}
 	}()
-	var step int = 0
+
+	var flag2 bool = true
 	time.AfterFunc(w.TimeOut*2, func() {
-		if step < 1 {
+		if flag2 {
 			fmt.Println("关闭了w.conn")
 			w.conn.Close()
 		}
@@ -366,7 +370,7 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 			if _, bias, _, err := packet.ParseDataPacket(rda[:l], w.key); e.Errlog(err) {
 				continue
 			} else if bias == 0x3FFFFF0002 {
-				step = 1
+				flag2 = false
 				return nil
 			}
 		}
