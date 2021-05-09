@@ -348,14 +348,14 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 		}
 	}()
 	var step int = 0
-	time.AfterFunc(w.TimeOut, func() {
+	time.AfterFunc(w.TimeOut*2, func() {
 		if step < 1 {
 			w.conn.Close()
 		}
 	})
 	for {
 		rda = make([]byte, 1500)
-		if l, err := w.conn.Read(rda); e.Errlog(err) {
+		if l, err := w.conn.Read(rda); err != nil {
 			if strings.Contains(err.Error(), "closed") {
 				return errors.New("timeout")
 			}
