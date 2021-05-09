@@ -10,6 +10,7 @@ func main() {
 
 	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
 		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}
+		r.Path = `../../tmp/r/Telegram.apk`
 		return r
 	})
 	if err != nil {
