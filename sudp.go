@@ -35,14 +35,12 @@ type sudp struct {
 var Version uint8 = 0b00000001
 var err error
 
-type read = *sudp
-type write = *sudp
-
-type initFun func(*sudp) *sudp
+type Read sudp
+type Write sudp
 
 // NewRead
-func NewRead(f initFun) (read, error) {
-	var y = new(sudp)
+func NewRead(f func(r *Read) *Read) (*Read, error) {
+	var y = new(Read)
 	y.MTU = 1372
 	y.TimeOut = time.Second
 	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
@@ -51,11 +49,14 @@ func NewRead(f initFun) (read, error) {
 	if y.MTU < 500 || y.MTU > 1500 {
 		return nil, errors.New("invalid MTU")
 	}
+	if y.Raddr == nil {
+		return nil, errors.New("not set Raddr")
+	}
 	return y, nil
 }
 
 // Read 接收数据
-func (r read) Read(requestBody []byte) error {
+func (r *Read) Read(requestBody []byte) error {
 
 	if err = r.sendHandshake(requestBody); e.Errlog(err) {
 		return err
@@ -98,12 +99,13 @@ func (r read) Read(requestBody []byte) error {
 }
 
 // NewWrite
-func NewWrite(f initFun) (write, error) {
-	var y = new(sudp)
+func NewWrite(f func(r *Write) *Write) (*Write, error) {
+	var y = new(Write)
 	y.Encrypt = true
 	y.MTU = 1372
 	y.TimeOut = time.Second
 	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
+	// 无需设置Raddr
 	y = f(y)
 
 	if y.Path == "" {
@@ -112,15 +114,12 @@ func NewWrite(f initFun) (write, error) {
 	if y.MTU < 500 || y.MTU > 1500 {
 		return nil, errors.New("invalid MTU")
 	}
-	if y.Raddr == nil {
-		return nil, errors.New("not set Raddr")
-	}
 	return y, nil
 }
 
 // Write 发送数据
 //  会阻塞直到收到接收方请求
-func (w write) Write(f func(requestBody []byte) bool) error {
+func (w Write) Write(f func(requestBody []byte) bool) error {
 
 	if ifs, basePath, outFiles, err := com.GetFloderInfo(w.Path); err != nil || len(outFiles) != 0 {
 		if e.Errlog(err) {

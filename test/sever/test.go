@@ -1,10 +1,23 @@
 package main
 
+import (
+	"fmt"
+	"net"
+	"sudp"
+)
+
 func main() {
-	// s := new(sudp.SUDP)
-	// s.Encrypt = true
-	// s.MTU = 1237
-	// s.TimeOut = time.Second
+
+	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
+		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}
+		return r
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(w.Write(func(requestBody []byte) bool { return true }))
 
 	// fmt.Println(s.ReceiveHandshake(&net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}, func(requestBody []byte) bool { return true }))
 }
