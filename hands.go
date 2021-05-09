@@ -118,13 +118,13 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 			if rkey, err := crypter.RsaDecrypt(rda[:dl], priKey); e.Errlog(err) {
 				return err
 			} else {
-				r.key = rkey
+				r.controlKey = rkey
 				fmt.Println("密钥", r.key)
 			}
 			if encryp {
-				r.fileDataKey = r.key
+				r.key = r.controlKey
 			} else {
-				r.fileDataKey = nil
+				r.key = nil
 			}
 			break
 		}
@@ -134,6 +134,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	if sda, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFF1000, r.key, false); e.Errlog(err) {
 		return err
 	}
+	fmt.Println("开始报长度", len(sda))
 	for i := 0; i < 5; i++ {
 		r.conn.Write(sda)
 	}
@@ -174,12 +175,12 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	}
 
 	// 握手
-	w.key = createKey()
+	w.controlKey = createKey()
 	fmt.Println("密钥", w.key)
 	var isEncrypto uint8 = 0x0
 	if w.Encrypt {
 		isEncrypto = 0xf
-		w.fileDataKey = w.key
+		w.key = w.controlKey
 	}
 	if sda, _, _, err = packet.PackageDataPacket([]byte{Version, uint8(w.MTU >> 8), uint8(w.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
 		return err
@@ -262,7 +263,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			return err
 		} else if bias == 0x3FFFFF1000 {
 			step = 2
-			break // 握手完成
+			break // 收到开始包, 握手完成
 		}
 	}
 

@@ -27,9 +27,9 @@ type sudp struct {
 	Laddr    *net.UDPAddr  //
 	Raddr    *net.UDPAddr  //
 
-	conn        *net.UDPConn
-	key         []byte // 传输密钥
-	fileDataKey []byte // 文件数据包密钥
+	conn       *net.UDPConn
+	key        []byte // 传输密钥, 如果设置会加密除握手包外所有包
+	controlKey []byte // 必须被设置, 用于加密控制包的数据
 }
 
 var Version uint8 = 0b00000001

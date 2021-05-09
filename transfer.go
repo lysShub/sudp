@@ -119,7 +119,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		for bias = int64(0); bias < fileSize; {
 
 			d = make([]byte, w.MTU-9, w.MTU+8)
-			if d, dl, sEnd, err = r.ReadFile(d, bias, w.fileDataKey); e.Errlog(err) {
+			if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
 				errCh <- err
 				return
 			}
@@ -388,7 +388,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			} else {
 				d = make([]byte, w.MTU)
 			}
-			if d, _, _, err = r.ReadFile(d, i, w.fileDataKey); e.Errlog(err) {
+			if d, _, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
 				return err
 			}
 			if _, err = w.conn.Write(d); e.Errlog(err) {
