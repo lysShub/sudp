@@ -256,7 +256,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 				return err
 			}
 		}
-		if _, bias, _, err := packet.ParseDataPacket(rda[:n], w.key); e.Errlog(err) {
+		if _, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
 			return err
 		} else if bias == 0x3FFFFF1000 {
 			step = 2
