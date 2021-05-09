@@ -107,7 +107,6 @@ func NewWrite(f func(r *Write) *Write) (*Write, error) {
 	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
 	// 无需设置Raddr
 	y = f(y)
-
 	if y.Path == "" {
 		return nil, errors.New("not set Path")
 	}

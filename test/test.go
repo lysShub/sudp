@@ -14,6 +14,7 @@ func main() {
 
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
 		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}
+		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
 		return r
 	})
 
