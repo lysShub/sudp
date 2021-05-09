@@ -131,6 +131,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	}
 
 	// 开始
+	fmt.Println("开始报加密密钥", r.key)
 	if sda, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFF1000, r.key, false); e.Errlog(err) {
 		return err
 	}
@@ -259,12 +260,15 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 				return err
 			}
 		}
-		if _, bias, _, err := packet.ParseDataPacket(rda[:n], w.key); e.Errlog(err) {
-			return err
-		} else if bias == 0x3FFFFF1000 {
-			step = 2
-			break // 收到开始包, 握手完成
+		if n%16 == 0 { // 可能收到不需要加密的握手数据包
+			if _, bias, _, err := packet.ParseDataPacket(rda[:n], w.key); e.Errlog(err) {
+				return err
+			} else if bias == 0x3FFFFF1000 {
+				step = 2
+				break // 收到开始包, 握手完成
+			}
 		}
+
 	}
 
 	return nil
