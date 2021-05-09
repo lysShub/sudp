@@ -53,7 +53,7 @@ func ParseDataPacket(d []byte, k []byte) (int64, int64, bool, error) {
 	var pl int // 原始数据包长度
 
 	// 解密
-	if k != nil {
+	if k != nil || len(k) == 0 {
 		if err := crypter.CbcDecrypt(k[:16], d); err != nil {
 			return 0, -1, false, err
 		}
