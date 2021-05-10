@@ -323,6 +323,18 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 
 			if bias == 0x3FFFFF0001 { // 文件信息
 				flag = false
+				fmt.Println("收到文件信息包")
+				go func() { // 回复开始包
+					if da, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFF0002, r.key, false); e.Errlog(err) {
+						return
+					}
+					for i := 0; i < 10; i++ {
+						if _, err = r.conn.Write(da); e.Errlog(err) {
+							return
+						}
+						time.Sleep(time.Millisecond * 10)
+					}
+				}()
 				return string(da[5:dl]), int64(da[0])<<32 + int64(da[1])<<24 + int64(da[2])<<16 + int64(da[3])<<8 + int64(da[4]), false, nil
 
 			} else if bias == 0x3FFFFFFF00 { // 任务结束包

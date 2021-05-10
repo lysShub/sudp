@@ -56,7 +56,7 @@ func (r *Recorder) HasCover() bool {
 
 // Shche 进度, 0开头的块的结尾
 func (r *Recorder) Shche() int64 {
-	if r.rec[0] == 0 {
+	if len(r.rec) > 0 && r.rec[0] == 0 {
 		return r.rec[1]
 	}
 	return 0
