@@ -12,7 +12,7 @@ import (
 	"github.com/lysShub/sudp"
 )
 
-func main() {
+func main1() {
 
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
 		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}
@@ -32,7 +32,7 @@ func main() {
 
 }
 
-func main2() {
+func main() {
 	difference()
 }
 
@@ -74,18 +74,18 @@ func difference() {
 			for j, v := range b {
 				if v != b1[j] {
 					f = int(i) + j
-					fmt.Println("第" + strconv.Itoa(int(i)+j) + "位不相同")
+					fmt.Println("第" + strconv.Itoa(f) + "位不相同")
 					break
 				}
 			}
 
 			b, b1 := make([]byte, 100), make([]byte, 100)
-			_, err := fh.ReadAt(b, int64(f))
+			_, err := fh.ReadAt(b, int64(f-5))
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			_, err = fh2.ReadAt(b1, int64(f))
+			_, err = fh2.ReadAt(b1, int64(f-5))
 			if err != nil {
 				fmt.Println(err)
 				return

@@ -136,6 +136,7 @@ type Wt struct {
 	block    []byte   // 储存数据块，存入暂存数据必须连续且小于
 	rang     [2]int64 // 记录block中数据的位置
 	dalen    int64    // 记录block中有效数据长度(处理最后块)
+	rbias    int64
 }
 
 // init 初始化函数
@@ -155,14 +156,14 @@ func (w *Wt) init() {
 // WriteFile 写入文件
 //  传入参数: 原始数据, 偏置, 是否清空缓存(最后数据)
 //  块中数据不连续也会被写入
-func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
+func (w *Wt) WriteFile1(d []byte, bias int64, end bool) error {
 	w.init()
 
 	dl := int64(len(d))
 
 	//重置缓存块
 	if w.rang[1] < bias+dl-1 || end {
-		_, err = w.Fh.WriteAt(w.block, w.rang[0])
+		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
 
 		// 重置
 		w.rang[0] = bias
@@ -182,8 +183,41 @@ func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
 
 	if end { // 清空缓存
 		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
+		// 之后的数据都不会有缓存块了
+		w.rang[0] = w.rang[1]
 		w.dalen = 0
 	}
 
+	return err
+}
+
+// WriteFile 写入文件
+//  传入参数: 原始数据, 偏置, 是否清空缓存
+func (f *Wt) WriteFile(d []byte, bias int64, end bool) error {
+	f.init()
+
+	dl := int64(len(d))
+
+	//重置缓存块
+	if f.rang[1] < bias+dl-1 || end {
+		_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
+
+		// 重置
+		f.rang[0] = bias
+		f.rang[1] = bias + f.bs
+		copy(f.block[0:dl], d)
+		f.rbias = dl
+		if end { // 清空缓存
+			_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
+		}
+
+	} else {
+		if bias >= f.rang[0] { //存入缓存块
+			copy(f.block[bias-f.rang[0]:bias-f.rang[0]+dl], d)
+			f.rbias = f.rbias + dl
+		} else { // 非缓存范围 直接写入
+			_, err = f.Fh.WriteAt(d, bias)
+		}
+	}
 	return err
 }
