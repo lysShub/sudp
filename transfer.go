@@ -41,7 +41,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			keep     bool = false
 		)
 		go func() {
-			for flag { // 15s超时
+			for flag { // 15s超时(最多30s)
 				time.Sleep(time.Second * 15)
 				if !keep {
 					errCh <- errors.New("broken, no data for more than 15 seconds")
@@ -72,8 +72,8 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 					} else if bias == 0x3FFFFF0008 { // 文件进度包
 						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil && len(da) == 5 {
 							keep = true
-
 							w.Schedule = int64(da[0])<<32 + int64(da[1])<<24 + int64(da[2])<<16 + int64(da[3])<<8 + int64(da[4])
+
 							fmt.Println("接收到文件进度包", w.Schedule)
 						} else {
 							e.Errlog(err)
@@ -94,7 +94,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil && len(da) == 4 {
 							w.Speed = int(da[0])<<24 + int(da[1])<<16 + int(da[2])<<8 + int(da[3])
 
-							fmt.Println("收到速度控制包", w.Speed, int(da[0])<<24+int(da[1])<<16+int(da[2])<<8+int(da[3]))
+							// fmt.Println("收到速度控制包", w.Speed, int(da[0])<<24+int(da[1])<<16+int(da[2])<<8+int(da[3]))
 						} else {
 							e.Errlog(err)
 						}
@@ -218,7 +218,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 					ch <- err
 					return
 				}
-				if rec.Blocks() == 1 && end {
+				if end && rec.Blocks() == 1 {
 					fmt.Println("文件传输完成")
 					if rec.HasCover() {
 						e.Errlog(errors.New("有覆盖写入"))
@@ -237,6 +237,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				ch <- err
 				return
 			}
+			fmt.Println("----------------------------------")
 		}
 	}()
 	go func() { // 速度更新
