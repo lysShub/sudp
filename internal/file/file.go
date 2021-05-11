@@ -156,7 +156,9 @@ func (w *Wt) init() {
 // WriteFile 写入文件
 //  传入参数: 原始数据, 偏置, 是否清空缓存(最后数据)
 //  块中数据不连续也会被写入
-func (w *Wt) WriteFile1(d []byte, bias int64, end bool) error {
+func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
+	_, err = w.Fh.WriteAt(d, bias)
+	return err
 	w.init()
 
 	dl := int64(len(d))
@@ -193,7 +195,7 @@ func (w *Wt) WriteFile1(d []byte, bias int64, end bool) error {
 
 // WriteFile 写入文件
 //  传入参数: 原始数据, 偏置, 是否清空缓存
-func (f *Wt) WriteFile(d []byte, bias int64, end bool) error {
+func (f *Wt) WriteFile1(d []byte, bias int64, end bool) error {
 	f.init()
 
 	dl := int64(len(d))

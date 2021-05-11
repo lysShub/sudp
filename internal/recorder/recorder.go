@@ -88,8 +88,8 @@ func (r *Recorder) Blocks() int64 {
 	return s
 }
 
-// Owe 统计缺失文件总和
-func (r *Recorder) Owe(CountRange int) [][2]int64 {
+// Owe 统计缺失文件总和, 最多返回100组数据
+func (r *Recorder) Owe() [][2]int64 {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	var l int = len(r.rec)
@@ -97,19 +97,39 @@ func (r *Recorder) Owe(CountRange int) [][2]int64 {
 		return nil
 	}
 
-	// end := r.rec[l-1] - int64(CountRange)
-	end := r.rec[l-1]
 	var R [][2]int64
 
-	for i := 1; i <= l-2 && i <= 200; i = i + 2 {
-		if r.rec[i] >= end { // 达到统计边界
-			break
-		} else {
-			R = append(R, [2]int64{
-				r.rec[i] + 1, r.rec[i+1] - 1,
-			})
+	for i := 2; i < l-1 && i <= 200; i = i + 2 {
+		R = append(R, [2]int64{
+			r.rec[i-1] + 1, r.rec[i] - 1,
+		})
+	}
+	return R
+}
+
+// Owe 统计缺失文件总和, 返回所有缺失数据
+func (r *Recorder) OweAll() [][][2]int64 {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	var l int = len(r.rec)
+	if l < 4 {
+		return nil
+	}
+
+	var R [][][2]int64
+	var t [][2]int64
+
+	for i := 2; i < len(r.rec)-1; i = i + 2 {
+		t = append(t, [2]int64{
+			r.rec[i-1] + 1, r.rec[i] - 1,
+		})
+		if i%200 == 0 {
+			R = append(R, t)
+			t = nil
 		}
 	}
+	R = append(R, t)
+
 	return R
 }
 

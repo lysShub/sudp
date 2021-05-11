@@ -60,7 +60,11 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 		}
 		rda = make([]byte, 1500)
 		if n, err = r.conn.Read(rda); e.Errlog(err) {
-			return err
+			if strings.Contains(err.Error(), "closed") {
+				return errors.New("timeout")
+			} else if e.Errlog(err) {
+				return err
+			}
 		}
 		if _, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF8000 {
 			step = 1

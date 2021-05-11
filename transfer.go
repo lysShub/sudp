@@ -66,7 +66,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							return
 						} else {
 							fmt.Println("接收到文件重发包")
-							rseCh <- da
+							if len(rseCh) < cap(rseCh) {
+								rseCh <- da
+							}
 						}
 
 					} else if bias == 0x3FFFFF0008 { // 文件进度包
@@ -138,7 +140,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				if w.Speed > 0 {
 					w.ts = time.Duration(1e9 * w.MTU / w.Speed)
 				} else {
-					w.ts = time.Millisecond * 10
+					w.ts = time.Millisecond * 100
 				}
 				time.Sleep(time.Millisecond * 10)
 			}
@@ -212,20 +214,32 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	go func() { // 重发
 		for flag {
 			time.Sleep(strategy.ResendTime)
-
-			if re := rec.Owe(0); len(re) > 0 || end {
-				if err = r.sendResendDataPacket(re); e.Errlog(err) {
-					ch <- err
-					return
-				}
-				if end && rec.Blocks() == 1 {
-					fmt.Println("文件传输完成")
-					if rec.HasCover() {
-						e.Errlog(errors.New("有覆盖写入"))
+			if !end {
+				if re := rec.Owe(); len(re) > 0 {
+					if err = r.sendResendDataPacket(re); e.Errlog(err) {
+						ch <- err
+						return
 					}
-					ch <- nil
-					return
 				}
+			} else { // 收到最后包, 只剩重发, 改变重发策略
+				if re := rec.OweAll(); len(re) > 0 {
+					for _, v := range re {
+						if err = r.sendResendDataPacket(v); e.Errlog(err) {
+							ch <- err
+							return
+						}
+						time.Sleep(time.Millisecond * 10)
+					}
+				}
+			}
+
+			if end && rec.Blocks() == 1 {
+				fmt.Println("文件传输完成")
+				if rec.HasCover() {
+					e.Errlog(errors.New("有覆盖写入"))
+				}
+				ch <- nil
+				return
 			}
 		}
 	}()
@@ -264,13 +278,14 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				if tend && !end {
 					fmt.Println("---------------------------收到了结束包-----------------------")
 					end = tend
+
 				}
 				if bias < 0x3FFFFF0000 {
 					if err = w.WriteFile(da[:dl], bias, end); e.Errlog(err) {
 						ch <- err
 					}
 					rec.Add(bias, bias+dl-1) //记录
-					counter += dl
+					counter += int64(l)
 
 				} else {
 					fmt.Println("意外偏置", bias)
@@ -308,7 +323,7 @@ func (r *Read) sendSpeedControlPacket(ns int) error {
 }
 
 func (r *Read) sendResendDataPacket(ownRec [][2]int64) error {
-	fmt.Println(ownRec)
+	// fmt.Println(ownRec)
 
 	var da []byte = make([]byte, 0)
 	for _, v := range ownRec {
