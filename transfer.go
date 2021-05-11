@@ -480,9 +480,9 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 		for i := sb; i <= eb; i = i + int64(w.MTU) {
 			if int64(w.MTU)+i-1 > eb {
-				d = make([]byte, eb-i+1)
+				d = make([]byte, eb-i+1, eb-i+14)
 			} else {
-				d = make([]byte, w.MTU)
+				d = make([]byte, w.MTU, w.MTU+15)
 			}
 			if d, _, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
 				return err
@@ -490,6 +490,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
+			fmt.Println(len(d))
 			time.Sleep(w.ts)
 		}
 	}

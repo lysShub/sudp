@@ -101,7 +101,7 @@ func (r *Recorder) Owe(CountRange int) [][2]int64 {
 	end := r.rec[l-1]
 	var R [][2]int64
 
-	for i := 1; i <= l-2 && i <= 100; i = i + 2 {
+	for i := 1; i <= l-2 && i <= 200; i = i + 2 {
 		if r.rec[i] >= end { // 达到统计边界
 			break
 		} else {

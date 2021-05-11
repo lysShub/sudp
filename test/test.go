@@ -32,29 +32,18 @@ func main() {
 
 }
 
-func main1() {
-	// // &net.UDPAddr{IP: net.ParseIP("114.116.254.26"), Port: 19986},
-	// // 收 119.3.166.124
-
-	// go func() {
-	// 	t := new(tasker.Tasker)
-	// 	t.Addr = &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 19986} //172.30.1.211
-	// 	t.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
-
-	// 	fmt.Println(t.Receive(&net.UDPAddr{IP: nil, Port: 19986}, []byte("11")))
-	// }()
-
-	// http.ListenAndServe(":8080", nil)
+func main2() {
+	difference()
 }
 
 // 比较两个文件的差异
 func difference() {
-	fh, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\DSPdsign.7z`)
+	fh, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\Telegram.apk`)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fh2, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\r\DSPdsign.7z`)
+	fh2, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\r\Telegram.apk`)
 	if err != nil {
 		fmt.Println(err)
 		return
