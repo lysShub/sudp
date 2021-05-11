@@ -1,4 +1,4 @@
-module sudp
+module github.com/lysShub/sudp
 
 go 1.15
 

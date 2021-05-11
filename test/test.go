@@ -7,7 +7,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strconv"
-	"sudp"
+
+	"github.com/lysShub/sudp"
 )
 
 func main() {
@@ -27,17 +28,6 @@ func main() {
 
 	// fmt.Println(s.SendHandshake(&net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}, nil))
 
-}
-
-func main2() {
-
-	// 172.30.0.1:49529
-
-	// t := new(tasker.Tasker)
-	// t.Addr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986} // net.ParseIP("172.30.0.1")
-	// t.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
-
-	// fmt.Println(t.Receive(&net.UDPAddr{IP: nil, Port: 19986}, []byte("11")))
 }
 
 func main1() {

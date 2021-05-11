@@ -5,17 +5,13 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sudp/internal/com"
-	"sudp/internal/packet"
 	"time"
+
+	"github.com/lysShub/sudp/internal/com"
+	"github.com/lysShub/sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )
-
-// type Socket interface {
-// 	Write()
-// 	Read()
-// }
 
 type sudp struct {
 	Encrypt  bool          // 是否加密, 默认加密
@@ -28,7 +24,7 @@ type sudp struct {
 	Raddr    *net.UDPAddr  //
 
 	conn       *net.UDPConn
-	key        []byte // 传输密钥, 如果设置会加密除握手包外所有包
+	key        []byte // 传输密钥, 可能为nil
 	controlKey []byte // 必须被设置, 用于加密控制包的数据
 }
 
@@ -76,17 +72,19 @@ func (r *Read) Read(requestBody []byte) error {
 					if err = r.receiveData(fh, fs); e.Errlog(err) { // 读取文件数据
 						return err
 					} else {
-						da, _, _, err := packet.PackageDataPacket(nil, 0x3FFFFF00FF, r.key, false)
-						if e.Errlog(err) {
+						if da, err := packet.SecureDecrypt(nil, r.controlKey); e.Errlog(err) {
 							return err
 						} else {
-							for i := 0; i < 5; i++ {
-								if _, err = r.conn.Write(da); e.Errlog(err) {
-									return err
+							if da, _, _, err = packet.PackagePacket(da, 0x3FFFFF00FF, r.key, false); e.Errlog(err) {
+								return err
+							} else {
+								for i := 0; i < 5; i++ {
+									if _, err = r.conn.Write(da); e.Errlog(err) {
+										return err
+									}
 								}
 							}
 						}
-
 					}
 				}
 
@@ -155,14 +153,18 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 				return nil
 			}
 		}
+
 		// 发送任务结束包
-		var da []byte
-		if da, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFFFF00, w.key, false); e.Errlog(err) {
+		if da, err := packet.SecureEncrypt(nil, w.controlKey); e.Errlog(err) {
 			return err
-		}
-		for i := 0; i < 10; i++ {
-			if _, err = w.conn.Write(da); e.Errlog(err) {
+		} else {
+			if da, _, _, err = packet.PackagePacket(da, 0x3FFFFFFF00, w.key, false); e.Errlog(err) {
 				return err
+			}
+			for i := 0; i < 10; i++ {
+				if _, err = w.conn.Write(da); e.Errlog(err) {
+					return err
+				}
 			}
 		}
 	}

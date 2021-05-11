@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
-	"sudp"
+
+	"github.com/lysShub/sudp"
 )
 
 func main() {

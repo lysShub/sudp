@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	"sudp/internal/com"
-	"sudp/internal/packet"
+	"github.com/lysShub/sudp/internal/com"
+	"github.com/lysShub/sudp/internal/packet"
 )
 
 var err error
@@ -90,9 +90,9 @@ func (f *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 
 		// 16MB数据块恰好读完文件数据，且此数据包恰好读完数据块中最后数据
 		if f.smallProbability && bias+l+1 == f.fs {
-			return packet.PackageDataPacket(d, bias, key, true)
+			return packet.PackagePacket(d, bias, key, true)
 		}
-		return packet.PackageDataPacket(d, bias, key, false)
+		return packet.PackagePacket(d, bias, key, false)
 	}
 
 	// 不启用快速读取模式
@@ -115,12 +115,12 @@ func (f *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, 
 			if err != nil {
 				return nil, 0, false, err
 			}
-			return packet.PackageDataPacket(d, bias, key, true)
+			return packet.PackagePacket(d, bias, key, true)
 
 		}
 		return nil, 0, false, err
 	}
-	return packet.PackageDataPacket(d, bias, key, false)
+	return packet.PackagePacket(d, bias, key, false)
 }
 
 /* ---------------------------------------------------------------------------------------------- */

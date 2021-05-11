@@ -9,9 +9,10 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sudp/internal/crypter"
-	"sudp/internal/packet"
 	"time"
+
+	"github.com/lysShub/sudp/internal/crypter"
+	"github.com/lysShub/sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )
@@ -27,7 +28,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	var n int
 
 	// 请求
-	if sda, _, _, err = packet.PackageDataPacket(requestBody, 0x3FFFFF0000, nil, false); err != nil {
+	if sda, _, _, err = packet.PackagePacket(requestBody, 0x3FFFFF0000, nil, false); err != nil {
 		return err
 	}
 
@@ -61,9 +62,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 		if n, err = r.conn.Read(rda); e.Errlog(err) {
 			return err
 		}
-		if _, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
-			return err
-		} else if bias == 0x3FFFFF8000 {
+		if _, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF8000 {
 			step = 1
 			if rda[0] != Version { // 版本不相同
 				sda = []byte{10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 252, 0, 8, 106, 249, 147, 14}
@@ -82,7 +81,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				if priKey, pubkey, err = crypter.RsaGenKey(); e.Errlog(err) {
 					return err
 				} else {
-					if sda, _, _, err = packet.PackageDataPacket(append([]byte{0, uint8(r.MTU >> 8), uint8(r.MTU)}, pubkey...), 0x3FFFFF4000, nil, false); e.Errlog(err) {
+					if sda, _, _, err = packet.PackagePacket(append([]byte{0, uint8(r.MTU >> 8), uint8(r.MTU)}, pubkey...), 0x3FFFFF4000, nil, false); e.Errlog(err) {
 						return err
 					}
 					r.conn.Write(sda)
@@ -112,9 +111,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 			}
 		}
 
-		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
-			return err
-		} else if bias == 0x3FFFFF2000 {
+		if dl, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF2000 {
 			step = 2
 			if rkey, err := crypter.RsaDecrypt(rda[:dl], priKey); e.Errlog(err) {
 				return err
@@ -132,13 +129,15 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	}
 
 	// 开始
-	fmt.Println("开始报加密密钥", r.key)
-	if sda, _, _, err = packet.PackageDataPacket(nil, 0x3FFFFF1000, r.key, false); e.Errlog(err) {
+	if da, err := packet.SecureEncrypt(nil, r.controlKey); e.Errlog(err) {
 		return err
-	}
-	fmt.Println("开始报长度", len(sda))
-	for i := 0; i < 5; i++ {
-		r.conn.Write(sda)
+	} else {
+		if sda, _, _, err = packet.PackagePacket(da, 0x3FFFFF1000, r.key, false); e.Errlog(err) {
+			return err
+		}
+		for i := 0; i < 5; i++ {
+			r.conn.Write(sda)
+		}
 	}
 	return nil
 }
@@ -160,7 +159,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 		if n, raddr, err = w.conn.ReadFromUDP(rda); e.Errlog(err) {
 			return err
 		}
-		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); err == nil {
+		if dl, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil {
 			if bias == 0x3FFFFF0000 {
 				if f(rda[:dl]) {
 					w.conn.Close()
@@ -184,7 +183,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 		isEncrypto = 0xf
 		w.key = w.controlKey
 	}
-	if sda, _, _, err = packet.PackageDataPacket([]byte{Version, uint8(w.MTU >> 8), uint8(w.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
+	if sda, _, _, err = packet.PackagePacket([]byte{Version, uint8(w.MTU >> 8), uint8(w.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
 		return err
 	}
 
@@ -221,10 +220,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			}
 		}
 
-		if dl, bias, _, err := packet.ParseDataPacket(rda[:n], nil); e.Errlog(err) {
-			return err
-
-		} else if bias == 0x3FFFFF4000 {
+		if dl, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF4000 {
 			if rda[0] != 0 { // 握手代码
 				return errors.New("HandshakeCode: " + strconv.Itoa(int(rda[0])))
 			}
@@ -235,7 +231,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 				return err
 			}
 			// 确认确认握手
-			if sda, _, _, err = packet.PackageDataPacket(tda, 0x3FFFFF2000, nil, false); e.Errlog(err) {
+			if sda, _, _, err = packet.PackagePacket(tda, 0x3FFFFF2000, nil, false); e.Errlog(err) {
 				return err
 			}
 			w.conn.Write(sda)
@@ -247,7 +243,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	// 任务开始包
 	time.AfterFunc(w.TimeOut, func() {
 		if step < 2 {
-			fmt.Println("关闭任务开始包")
+			fmt.Println("未收到任务开始包")
 			w.conn.Close()
 		}
 	})
@@ -263,15 +259,12 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 				return err
 			}
 		}
-		if n%16 == 0 { // 可能收到不需要加密的握手数据包
-			if _, bias, _, err := packet.ParseDataPacket(rda[:n], w.key); e.Errlog(err) {
-				return err
-			} else if bias == 0x3FFFFF1000 {
+		if n, bias, _, err := packet.ParsePacket(rda[:n], w.key); err == nil && bias == 0x3FFFFF1000 {
+			if _, err = packet.SecureDecrypt(rda[:n], w.controlKey); err == nil {
 				step = 2
 				break // 收到开始包, 握手完成
 			}
 		}
-
 	}
 
 	return nil
