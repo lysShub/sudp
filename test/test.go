@@ -12,7 +12,7 @@ import (
 	"github.com/lysShub/sudp"
 )
 
-func main1() {
+func main() {
 
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
 		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}
@@ -32,7 +32,7 @@ func main1() {
 
 }
 
-func main() {
+func main1() {
 	difference()
 }
 
