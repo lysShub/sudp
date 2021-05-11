@@ -486,7 +486,6 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
-	var t []int
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -506,17 +505,9 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 				return err
 			}
 			time.Sleep(w.ts)
-			t = append(t, len(d))
-		}
-	}
-	var i int
-	for _, v := range t {
-		if v < 1372 {
-			i++
 		}
 	}
 
-	fmt.Println("---------小于占比--------", 100*i/len(t))
 	return nil
 }
 
