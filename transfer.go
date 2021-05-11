@@ -218,7 +218,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 					ch <- err
 					return
 				}
-				if rec.Blocks() == 1 {
+				if rec.Blocks() == 1 && end {
 					fmt.Println("文件传输完成")
 					if rec.HasCover() {
 						e.Errlog(errors.New("有覆盖写入"))
@@ -490,7 +490,6 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			fmt.Println(len(d))
 			time.Sleep(w.ts)
 		}
 	}
