@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/lysShub/sudp/internal/file"
@@ -31,7 +30,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	var flag bool = true
 	defer func() { flag = false }()
 	w.ts = time.Millisecond * 10 // 数据包间隙暂停时间
-	var wg sync.WaitGroup
+	var tts int64 = 0            // 重发时, 控制主发送进程停止
 
 	// 接收
 	go func() {
@@ -117,13 +116,13 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			select {
 			case re = <-rseCh:
 				// 优先处理重发数据, 暂停主进程发送
-				wg.Add(1)
+				tts = 1e9
 				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
-					wg.Done()
+					tts = 0
 					errCh <- err
 					return
 				}
-				wg.Done()
+				tts = 0
 			case <-time.After(time.Second):
 			}
 		}
@@ -158,7 +157,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			}
 			bias = bias + dl
 			time.Sleep(w.ts)
-			wg.Wait()
+			time.Sleep(time.Duration(tts))
 
 			if sEnd { // 最后数据包必达
 				for {
