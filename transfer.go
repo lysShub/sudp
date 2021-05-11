@@ -390,6 +390,7 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 	var sda, rda []byte = []byte{uint8(fs >> 32), uint8(fs >> 24), uint8(fs >> 16), uint8(fs >> 8), uint8(fs)}, nil
 	sda = append(sda, []byte(name)...)
 
+	fmt.Println("文件信息包长度", len(sda))
 	if sda, err = packet.SecureEncrypt(sda, w.controlKey); e.Errlog(err) {
 		return err
 	} else {
