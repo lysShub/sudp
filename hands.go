@@ -117,7 +117,6 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				return err
 			} else {
 				r.controlKey = rkey
-				fmt.Println("密钥", r.key)
 			}
 			if encryp {
 				r.key = r.controlKey
@@ -177,7 +176,6 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 
 	// 握手
 	w.controlKey = createKey()
-	fmt.Println("密钥", w.key)
 	var isEncrypto uint8 = 0x0
 	if w.Encrypt {
 		isEncrypto = 0xf

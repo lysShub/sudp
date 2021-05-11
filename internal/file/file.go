@@ -169,6 +169,7 @@ func (f *Wt) WriteFile(d []byte, bias int64, end bool) error {
 		copy(f.block[0:dl], d)
 		f.rbias = dl
 		if end { // 清空缓存
+			fmt.Println("第一次写入")
 			_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
 		}
 

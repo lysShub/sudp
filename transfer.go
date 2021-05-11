@@ -38,11 +38,8 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			l        int
 		)
 		go func() {
-			for flag {
-				if err = w.conn.SetReadDeadline(time.Now().Add(time.Second * 16)); e.Errlog(err) {
-					errCh <- err
-				}
-				time.Sleep(time.Second * 15)
+			for flag { // 超时
+				time.Sleep(time.Second)
 			}
 		}()
 
