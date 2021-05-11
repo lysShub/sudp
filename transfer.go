@@ -118,7 +118,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			select {
 			case re = <-rseCh:
 
-				tts = 1e9 // 优先处理重发数据, 暂停主进程发送
+				tts = 1e8 // 优先处理重发数据, 暂停主进程发送
 				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
 					tts = 0
 					errCh <- err
@@ -196,7 +196,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	defer func() { flag = false }()
 
 	var ch chan error = make(chan error)
-	var counter int64 = 0 // 记录一段时间收到的数据
+	var counter int = 0 // 记录一段时间收到的数据
 
 	go func() { // 速度
 		for flag { // 周期
@@ -251,12 +251,11 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				ch <- err
 				return
 			}
-			fmt.Println("----------------------------------")
 		}
 	}()
 	go func() { // 速度更新
 		for flag {
-			r.Speed = 5 * int(counter)
+			r.Speed = 5 * counter
 			counter = 0
 			time.Sleep(time.Millisecond * 200)
 		}
@@ -278,14 +277,13 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				if tend && !end {
 					fmt.Println("---------------------------收到了结束包-----------------------")
 					end = tend
-
 				}
 				if bias < 0x3FFFFF0000 {
 					if err = w.WriteFile(da[:dl], bias, end); e.Errlog(err) {
 						ch <- err
 					}
 					rec.Add(bias, bias+dl-1) //记录
-					counter += int64(l)
+					counter += l
 
 				} else {
 					fmt.Println("意外偏置", bias)

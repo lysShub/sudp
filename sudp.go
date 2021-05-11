@@ -84,7 +84,6 @@ func (r *Read) Read(requestBody []byte) error {
 						if err = r.sendFileEndPacket(); e.Errlog(err) {
 							return err
 						}
-
 					}
 				}
 			}
