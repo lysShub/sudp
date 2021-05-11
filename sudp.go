@@ -27,14 +27,18 @@ type sudp struct {
 	key        []byte // 传输密钥, 可能为nil
 	controlKey []byte // 必须被设置, 用于加密控制包的数据
 
-	ts time.Duration
 }
 
 var Version uint8 = 0b00000001
 var err error
 
-type Read sudp
-type Write sudp
+type Read struct {
+	sudp
+}
+type Write struct {
+	sudp
+	ts time.Duration
+}
 
 // NewRead
 func NewRead(f func(r *Read) *Read) (*Read, error) {

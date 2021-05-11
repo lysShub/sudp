@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lysShub/sudp/internal/file"
@@ -24,11 +25,13 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	r := new(file.Rd) // 读取器
 	r.Fh = fh
 
-	var errCh chan error = make(chan error, 2)
-	var endCh chan int64 = make(chan int64, 1)
+	var errCh chan error = make(chan error, 2)   // 错误通知管道
+	var endCh chan int64 = make(chan int64, 1)   // 结束通知管道
+	var rseCh chan []byte = make(chan []byte, 8) // 重发通知管道
 	var flag bool = true
 	defer func() { flag = false }()
 	w.ts = time.Millisecond * 10 // 数据包间隙暂停时间
+	var wg sync.WaitGroup
 
 	// 接收
 	go func() {
@@ -36,10 +39,16 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			da       []byte
 			bias, dl int64
 			l        int
+			keep     bool = false
 		)
 		go func() {
-			for flag { // 超时
-				time.Sleep(time.Second)
+			for flag { // 15s超时
+				time.Sleep(time.Second * 15)
+				if !keep {
+					errCh <- errors.New("broken, no data for more than 15 seconds")
+					return
+				}
+				keep = false
 			}
 		}()
 
@@ -47,13 +56,8 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 
 			da = make([]byte, 1500)
 			if l, err = w.conn.Read(da); err != nil {
-				if strings.Contains(err.Error(), "closed") {
-					errCh <- errors.New("broken, no data for more than 15 seconds")
-					return
-				} else {
-					errCh <- err
-					return
-				}
+				errCh <- err
+				return
 			} else {
 				if dl, bias, _, err = packet.ParsePacket(da[:l], w.key); err == nil {
 
@@ -63,26 +67,17 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							return
 						} else {
 							fmt.Println("接收到文件重发包")
-
-							w.ts = time.Second // 优先处理重发数据, 暂停主进程发送
-							if err = w.receiveResendDataPacket(da, r); e.Errlog(err) {
-								errCh <- err
-								return
-							}
-							if w.Speed > 0 {
-								w.ts = time.Duration(1e9 * w.MTU / w.Speed)
-							} else {
-								w.ts = time.Millisecond * 10
-							}
+							rseCh <- da
 						}
 
 					} else if bias == 0x3FFFFF0008 { // 文件进度包
-						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); e.Errlog(err) {
-							errCh <- err
-							return
-						} else if len(da) == 5 {
+						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil && len(da) == 5 {
+							keep = true
+
 							w.Schedule = int64(da[0])<<32 + int64(da[1])<<24 + int64(da[2])<<16 + int64(da[3])<<8 + int64(da[4])
 							fmt.Println("接收到文件进度包", w.Schedule)
+						} else {
+							e.Errlog(err)
 						}
 
 					} else if bias == 0x3FFFFF00FF { // 文件结束包
@@ -91,13 +86,18 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							fmt.Println("收到文件结束包")
 							endCh <- fileSize
 							return
+						} else {
+							e.Errlog(err)
 						}
 
 					} else if bias == 0x3FFFFF0010 {
 
 						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil && len(da) == 4 {
 							w.Speed = int(da[0])<<24 + int(da[1])<<16 + int(da[2])<<8 + int(da[3])
+
 							fmt.Println("收到速度控制包", w.Speed, int(da[0])<<24+int(da[1])<<16+int(da[2])<<8+int(da[3]))
+						} else {
+							e.Errlog(err)
 						}
 
 					} else {
@@ -106,6 +106,25 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				} else {
 					e.Errlog(err)
 				}
+			}
+		}
+	}()
+
+	// 重发
+	go func() {
+		var re []byte
+		for flag {
+			select {
+			case re = <-rseCh:
+				// 优先处理重发数据, 暂停主进程发送
+				wg.Add(1)
+				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
+					wg.Done()
+					errCh <- err
+					return
+				}
+				wg.Done()
+			case <-time.After(time.Second):
 			}
 		}
 	}()
@@ -139,6 +158,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			}
 			bias = bias + dl
 			time.Sleep(w.ts)
+			wg.Wait()
 
 			if sEnd { // 最后数据包必达
 				for {

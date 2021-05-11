@@ -33,26 +33,26 @@ type Rd struct {
 }
 
 // init 初始化函数
-func (f *Rd) init() error {
-	if !f.initflag {
+func (r *Rd) init() error {
+	if !r.initflag {
 		fmt.Println("启动")
 
-		fi, err := f.Fh.Stat()
+		fi, err := r.Fh.Stat()
 		if err != nil {
 			return err
 		}
-		f.fs = int64(fi.Size())
-		if (f.fs >> 24) >= 0b11 {
-			f.fm = true
-			f.bs = 4194304               //4194304 4MB
-			f.block = make([]byte, f.bs) //
-			if f.fs%f.bs == 0 {
-				f.smallProbability = true
+		r.fs = int64(fi.Size())
+		if (r.fs >> 24) >= 0b11 {
+			r.fm = true
+			r.bs = 4194304               //4194304 4MB
+			r.block = make([]byte, r.bs) //
+			if r.fs%r.bs == 0 {
+				r.smallProbability = true
 			}
 		} else {
-			f.fm = false
+			r.fm = false
 		}
-		f.initflag = true
+		r.initflag = true
 	}
 	return nil
 }
@@ -60,57 +60,57 @@ func (f *Rd) init() error {
 // ReadFile 读取文件；
 //   返回：打包好数据包，原始数据长度，是否最后包。
 //   参数d应该有足够的容量(len+15); 否则会浪费内存。正常情况下, 最后一个数据包读取的数据长度可能和len(d)不相同
-func (f *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
-	if err = f.init(); err != nil {
+func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
+	if err = r.init(); err != nil {
 		return nil, 0, false, err
 	}
 
 	// 启用快速读取模式
-	if f.fm {
+	if r.fm {
 
-		if bias < f.rang[0] {
-			return f.randomRead(f.Fh, d, bias, key)
+		if bias < r.rang[0] {
+			return r.randomRead(r.Fh, d, bias, key)
 		}
 
 		l := int64(len(d))
-		if f.rang[1] < bias+l-1 {
+		if r.rang[1] < bias+l-1 {
 
-			_, err := f.Fh.ReadAt(f.block, bias)
+			_, err := r.Fh.ReadAt(r.block, bias)
 			if err != nil {
 				if err == io.EOF { // 剩余文件不足以读取16MB的数据块
-					return f.randomRead(f.Fh, d, bias, key)
+					return r.randomRead(r.Fh, d, bias, key)
 				} else if com.Errorlog(err) {
 					return nil, 0, false, err
 				}
 			}
-			f.rang[0], f.rang[1] = bias, bias+f.bs-1 // 更新记录
+			r.rang[0], r.rang[1] = bias, bias+r.bs-1 // 更新记录
 
 		}
-		copy(d, f.block[bias-f.rang[0]:])
+		copy(d, r.block[bias-r.rang[0]:])
 
 		// 16MB数据块恰好读完文件数据，且此数据包恰好读完数据块中最后数据
-		if f.smallProbability && bias+l+1 == f.fs {
+		if r.smallProbability && bias+l+1 == r.fs {
 			return packet.PackagePacket(d, bias, key, true)
 		}
 		return packet.PackagePacket(d, bias, key, false)
 	}
 
 	// 不启用快速读取模式
-	return f.randomRead(f.Fh, d, bias, key)
+	return r.randomRead(r.Fh, d, bias, key)
 }
 
 // readfile
 // 	随机读取，适配最后一包
-func (f *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
+func (r *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
 
 	_, err := fh.ReadAt(d, bias)
 	if err != nil {
 		if err == io.EOF {
-			if f.fs-bias == 1 {
+			if r.fs-bias == 1 {
 				d = nil
 				return nil, 0, true, nil
 			}
-			d = make([]byte, f.fs-bias, f.fs-bias+9)
+			d = make([]byte, r.fs-bias, r.fs-bias+9)
 			_, err = fh.ReadAt(d, bias)
 			if err != nil {
 				return nil, 0, false, err
@@ -135,50 +135,55 @@ type Wt struct {
 	bs       int64    // block size 快速写入模式下的暂存数据块大小
 	block    []byte   // 储存数据块，存入暂存数据必须连续且小于
 	rang     [2]int64 // 记录block中数据的位置
-	rbias    int64    // 记录block中有效数据长度
+	dalen    int64    // 记录block中有效数据长度(处理最后块)
 }
 
 // init 初始化函数
-func (f *Wt) init() {
-	if !f.initflag {
+func (w *Wt) init() {
+	if !w.initflag {
 		fmt.Println("启动")
 
-		f.bs = 4194304
-		f.block = make([]byte, f.bs)
-		f.rang = [2]int64{
-			0, f.bs,
+		w.bs = 4194304
+		w.block = make([]byte, w.bs)
+		w.rang = [2]int64{
+			0, w.bs,
 		}
-		f.initflag = true
+		w.initflag = true
 	}
 }
 
 // WriteFile 写入文件
 //  传入参数: 原始数据, 偏置, 是否清空缓存(最后数据)
-func (f *Wt) WriteFile(d []byte, bias int64, end bool) error {
-	f.init()
+//  块中数据不连续也会被写入
+func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
+	w.init()
 
 	dl := int64(len(d))
 
 	//重置缓存块
-	if f.rang[1] < bias+dl-1 || end {
-		_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
+	if w.rang[1] < bias+dl-1 || end {
+		_, err = w.Fh.WriteAt(w.block, w.rang[0])
 
 		// 重置
-		f.rang[0] = bias
-		f.rang[1] = bias + f.bs
-		copy(f.block[0:dl], d)
-		f.rbias = dl
-		if end { // 清空缓存
-			_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
-		}
+		w.rang[0] = bias
+		w.rang[1] = bias + w.bs
+		copy(w.block[0:dl], d)
+		w.dalen = dl
 
 	} else {
-		if bias >= f.rang[0] { //存入缓存块
-			copy(f.block[bias-f.rang[0]:bias-f.rang[0]+dl], d)
-			f.rbias = f.rbias + dl
+		if bias >= w.rang[0] { //存入缓存块
+			copy(w.block[bias-w.rang[0]:bias-w.rang[0]+dl], d)
+			w.dalen = w.dalen + dl
+
 		} else { // 非缓存范围 直接写入
-			_, err = f.Fh.WriteAt(d, bias)
+			_, err = w.Fh.WriteAt(d, bias)
 		}
 	}
+
+	if end { // 清空缓存
+		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
+		w.dalen = 0
+	}
+
 	return err
 }
