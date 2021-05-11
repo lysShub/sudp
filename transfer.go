@@ -386,6 +386,23 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 	}
 }
 
+func (r *Read) sendFileEndPacket() error {
+	if da, err := packet.SecureDecrypt(nil, r.controlKey); e.Errlog(err) {
+		return err
+	} else {
+		if da, _, _, err = packet.PackagePacket(da, 0x3FFFFF00FF, r.key, false); e.Errlog(err) {
+			return err
+		} else {
+			for i := 0; i < 8; i++ {
+				if _, err = r.conn.Write(da); e.Errlog(err) {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 	var sda, rda []byte = []byte{uint8(fs >> 32), uint8(fs >> 24), uint8(fs >> 16), uint8(fs >> 8), uint8(fs)}, nil
 	sda = append(sda, []byte(name)...)

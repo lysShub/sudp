@@ -70,24 +70,17 @@ func (r *Read) Read(requestBody []byte) error {
 					return err
 				} else {
 					if err = r.receiveData(fh, fs); e.Errlog(err) { // 读取文件数据
+						fh.Close()
 						return err
+
 					} else {
-						if da, err := packet.SecureDecrypt(nil, r.controlKey); e.Errlog(err) {
+						fh.Close()
+						if err = r.sendFileEndPacket(); e.Errlog(err) {
 							return err
-						} else {
-							if da, _, _, err = packet.PackagePacket(da, 0x3FFFFF00FF, r.key, false); e.Errlog(err) {
-								return err
-							} else {
-								for i := 0; i < 5; i++ {
-									if _, err = r.conn.Write(da); e.Errlog(err) {
-										return err
-									}
-								}
-							}
 						}
+
 					}
 				}
-
 			}
 		}
 
