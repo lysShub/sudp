@@ -26,6 +26,8 @@ type sudp struct {
 	conn       *net.UDPConn
 	key        []byte // 传输密钥, 可能为nil
 	controlKey []byte // 必须被设置, 用于加密控制包的数据
+
+	ts time.Duration
 }
 
 var Version uint8 = 0b00000001

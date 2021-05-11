@@ -28,7 +28,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	var endCh chan int64 = make(chan int64, 1)
 	var flag bool = true
 	defer func() { flag = false }()
-	var ts time.Duration = time.Millisecond * 10 // 数据包间隙暂停时间
+	w.ts = time.Millisecond * 10 // 数据包间隙暂停时间
 
 	// 接收
 	go func() {
@@ -64,15 +64,15 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 						} else {
 							fmt.Println("接收到文件重发包")
 
-							ts = time.Second // 优先处理重发数据, 暂停主进程发送
+							w.ts = time.Second // 优先处理重发数据, 暂停主进程发送
 							if err = w.receiveResendDataPacket(da, r); e.Errlog(err) {
 								errCh <- err
 								return
 							}
 							if w.Speed > 0 {
-								ts = time.Duration(1e9 * w.MTU / w.Speed)
+								w.ts = time.Duration(1e9 * w.MTU / w.Speed)
 							} else {
-								ts = time.Millisecond * 10
+								w.ts = time.Millisecond * 10
 							}
 						}
 
@@ -118,9 +118,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		go func() { // 更新ts
 			for flag {
 				if w.Speed > 0 {
-					ts = time.Duration(1e9 * w.MTU / w.Speed)
+					w.ts = time.Duration(1e9 * w.MTU / w.Speed)
 				} else {
-					ts = time.Millisecond * 10
+					w.ts = time.Millisecond * 10
 				}
 				time.Sleep(time.Millisecond * 10)
 			}
@@ -138,7 +138,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				return
 			}
 			bias = bias + dl
-			time.Sleep(ts)
+			time.Sleep(w.ts)
 
 			if sEnd { // 最后数据包必达
 				for {
@@ -370,7 +370,7 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 						}
 					}()
 
-					return string(sda[5:dl]), int64(sda[0])<<32 + int64(sda[1])<<24 + int64(sda[2])<<16 + int64(sda[3])<<8 + int64(sda[4]), false, nil
+					return string(sda[5:]), int64(sda[0])<<32 + int64(sda[1])<<24 + int64(sda[2])<<16 + int64(sda[3])<<8 + int64(sda[4]), false, nil
 				} else {
 					e.Errlog(err)
 				}
@@ -384,7 +384,7 @@ func (r *Read) receiverFileInfoOrEndPacket() (string, int64, bool, error) {
 }
 
 func (r *Read) sendFileEndPacket() error {
-	if da, err := packet.SecureDecrypt(nil, r.controlKey); e.Errlog(err) {
+	if da, err := packet.SecureEncrypt(nil, r.controlKey); e.Errlog(err) {
 		return err
 	} else {
 		if da, _, _, err = packet.PackagePacket(da, 0x3FFFFF00FF, r.key, false); e.Errlog(err) {
@@ -453,7 +453,6 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
-	ts := time.Duration(1e9 * w.MTU / w.Speed)
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -472,22 +471,30 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			time.Sleep(ts)
+			time.Sleep(w.ts)
 		}
 	}
 
 	return nil
 }
 
+// openFile 打开文件, 不存在将会创建、无论声明路径
 func openFile(path string) (*os.File, error) {
+
+	if _, err := os.Stat(filepath.Dir(path)); err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(filepath.Dir(path), 0666); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+	// 路径已经存在
+
 	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666)
-	if os.IsNotExist(err) {
-		if err = os.MkdirAll(filepath.Dir(path), 0666); err != nil {
-			return nil, err
-		}
-		if fh, err = os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0666); err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
 	}
 	return fh, nil
 }
