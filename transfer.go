@@ -118,7 +118,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			select {
 			case re = <-rseCh:
 
-				tts = 1e8 // 优先处理重发数据, 暂停主进程发送
+				tts = 1e9 // 优先处理重发数据, 暂停主进程发送
 				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
 					tts = 0
 					errCh <- err
@@ -486,6 +486,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
+	var t []int
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -505,9 +506,16 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 				return err
 			}
 			time.Sleep(w.ts)
+			t = append(t, len(d))
 		}
 	}
-
+	var i int
+	for _, v := range t {
+		if v < 1372 {
+			i++
+		}
+	}
+	fmt.Println("---------小于占比--------", len(t)*100/i)
 	return nil
 }
 

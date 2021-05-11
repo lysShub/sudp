@@ -23,7 +23,7 @@ var (
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
-	return 1572864
+
 	var ns int
 	if nowSpeed == 0 {
 		nowSpeed = 5120
