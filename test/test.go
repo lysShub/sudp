@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/lysShub/sudp"
 )
@@ -23,8 +24,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
+	a := time.Now()
 	fmt.Println(r.Read(nil))
+	fmt.Println("耗时", time.Now().Sub(a))
 
 	// fmt.Println(s.SendHandshake(&net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}, nil))
 
