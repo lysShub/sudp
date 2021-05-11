@@ -515,7 +515,8 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			i++
 		}
 	}
-	fmt.Println("---------小于占比--------", len(t)*100/i)
+
+	fmt.Println("---------小于占比--------", 100*i/len(t))
 	return nil
 }
 
