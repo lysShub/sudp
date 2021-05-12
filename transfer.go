@@ -159,9 +159,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			bias = bias + dl
 			fmt.Println(w.ts)
 
-			time.Sleep(w.ts)
+			time.Sleep(w.ts - 4000000) // 4ms为发送所用时间
 			if resFlag {
-				time.Sleep(w.ts)
+				time.Sleep(w.ts - 4000000)
 			}
 
 			if sEnd { // 最后数据包必达
@@ -512,7 +512,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			time.Sleep(w.ts * 2)
+			time.Sleep(w.ts*2 - 8000000)
 		}
 	}
 
