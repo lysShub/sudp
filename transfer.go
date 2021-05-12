@@ -138,7 +138,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		go func() { // 更新ts
 			for flag {
 				if w.Speed > 0 {
-					w.ts = time.Duration(1e9*w.MTU/w.Speed - 40000)
+					w.ts = time.Duration(1e9*w.MTU/w.Speed - 20000)
 				} else {
 					w.ts = time.Millisecond * 100
 				}
