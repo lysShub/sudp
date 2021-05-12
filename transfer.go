@@ -158,7 +158,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				return
 			}
 			bias = bias + dl
-			fmt.Println(w.ts)
+			// fmt.Println(w.ts)
 
 			time.Sleep(w.ts)
 			if resFlag {
