@@ -147,7 +147,6 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}()
 
 		for bias = int64(0); bias < fileSize; {
-			a := time.Now()
 			d = make([]byte, w.MTU-9, w.MTU+8)
 			if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
 				errCh <- err
@@ -158,7 +157,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				return
 			}
 			bias = bias + dl
-			fmt.Println("耗时", time.Now().Sub(a))
+			fmt.Println(w.ts)
 
 			time.Sleep(w.ts)
 			if resFlag {
