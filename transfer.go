@@ -147,7 +147,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}()
 
 		for bias = int64(0); bias < fileSize; {
-
+			a := time.Now()
 			d = make([]byte, w.MTU-9, w.MTU+8)
 			if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
 				errCh <- err
@@ -158,6 +158,8 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				return
 			}
 			bias = bias + dl
+			fmt.Println("耗时", time.Now().Sub(a))
+
 			time.Sleep(w.ts)
 			if resFlag {
 				time.Sleep(w.ts)
@@ -218,6 +220,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 			time.Sleep(strategy.ResendTime)
 			if !end {
 				if re := rec.Owe(); len(re) > 0 {
+
 					if err = r.sendResendDataPacket(re); e.Errlog(err) {
 						ch <- err
 						return
@@ -226,6 +229,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 				if re := rec.OweAll(); len(re) > 0 {
 					for _, v := range re {
+
 						if err = r.sendResendDataPacket(v); e.Errlog(err) {
 							ch <- err
 							return
@@ -262,6 +266,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 			time.Sleep(time.Millisecond * 200)
 		}
 	}()
+	var total int = 0
 
 	go func() { // 接收数据包
 
@@ -286,6 +291,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 					}
 					rec.Add(bias, bias+dl-1) //记录
 					counter += l
+					total += l
 
 				} else {
 					fmt.Println("意外偏置", bias)
@@ -298,6 +304,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 
 	select {
 	case err = <-ch:
+		fmt.Println("-------------接收到总共数据----------------", total)
 		flag = false
 		return err
 	}
