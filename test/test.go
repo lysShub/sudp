@@ -13,9 +13,9 @@ import (
 )
 
 func main() {
-
+	// 接受方
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
-		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}
+		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986} // HW st
 		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
 		return r
 	})
@@ -30,6 +30,40 @@ func main() {
 
 	// fmt.Println(s.SendHandshake(&net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986}, nil))
 
+}
+
+// 本机
+func main2() {
+	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
+		r.Raddr = &net.UDPAddr{IP: net.ParseIP("10.8.145.88"), Port: 19987}
+		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
+		return r
+	})
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	a := time.Now()
+	fmt.Println(r.Read(nil))
+	fmt.Println("耗时", time.Now().Sub(a))
+}
+
+// 虚拟机
+func main3() {
+	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
+		r.Raddr = &net.UDPAddr{IP: net.ParseIP("192.168.43.183"), Port: 19986}
+		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
+		return r
+	})
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	a := time.Now()
+	fmt.Println(r.Read(nil))
+	fmt.Println("耗时", time.Now().Sub(a))
 }
 
 func main1() {

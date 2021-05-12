@@ -7,10 +7,14 @@ import (
 	"github.com/lysShub/sudp"
 )
 
+// log.Fatal(http.ListenAndServe(":80", http.FileServer(http.Dir(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`))))
+
 func main() {
 
+	// 发送
 	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
-		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}
+		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986} // HW st
+		// r.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
 		r.Path = `../../tmp/r/Telegram.apk`
 		return r
 	})
@@ -22,6 +26,36 @@ func main() {
 	fmt.Println(w.Write(func(requestBody []byte) bool { return true }))
 
 	// fmt.Println(s.ReceiveHandshake(&net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986}, func(requestBody []byte) bool { return true }))
+}
+
+// 本机
+func main2() {
+	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
+		r.Laddr = &net.UDPAddr{IP: net.ParseIP("10.8.145.88"), Port: 19987}
+		r.Path = `../../tmp/r/Telegram.apk`
+		return r
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(w.Write(func(requestBody []byte) bool { return true }))
+}
+
+// 虚拟机
+func main3() {
+	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
+		r.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
+		r.Path = `../../tmp/r/Telegram.apk`
+		return r
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(w.Write(func(requestBody []byte) bool { return true }))
 }
 
 func main1() {

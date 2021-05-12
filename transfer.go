@@ -230,7 +230,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 							ch <- err
 							return
 						}
-						time.Sleep(time.Millisecond * 10)
+						time.Sleep(time.Millisecond)
 					}
 				}
 			}

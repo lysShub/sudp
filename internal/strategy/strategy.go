@@ -11,19 +11,20 @@ import (
 
 // 速度控制策略
 var (
-	SpeedTime  time.Duration = time.Millisecond * 1000 // 发送速度控制包的周期
-	ResendTime time.Duration = time.Millisecond * 500  // 重发数据包检测周期
+	SpeedTime  time.Duration = time.Millisecond * 500 // 发送速度控制包的周期
+	ResendTime time.Duration = time.Millisecond * 300 // 重发数据包检测周期
 
-	delaylen  int   = 2                     // 速度记录器speeds的长度(>=1), 延时检测
+	delaylen  int   = 1                     // 速度记录器speeds的长度(>=1), 延时检测
 	speeds    []int = make([]int, delaylen) // 设定速度记录器
-	deviation int   = 25                    // 误差范围, 默认93.75% = (100-100/16)/100, 表示当前速度大于预定速度的93.75%即判定达到预期
+	deviation int   = 5                     // 误差范围, 默认93.75% = (100-100/16)/100, 表示当前速度大于预定速度的93.75%即判定达到预期
 	growRate  int   = 100                   // 增长率, 默认2^n增长，按照指数(l+growRate/100)^n倍增长
 
 )
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
-	return 1572864
+	// return 1572864 // 1.5MB
+	// return 5258240
 
 	var ns int
 	if nowSpeed == 0 {
