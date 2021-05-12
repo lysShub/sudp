@@ -138,7 +138,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		go func() { // 更新ts
 			for flag {
 				if w.Speed > 0 {
-					w.ts = time.Duration(1e9*w.MTU/w.Speed - 4000000)
+					w.ts = time.Duration(1e9*w.MTU/w.Speed - 40000)
 				} else {
 					w.ts = time.Millisecond * 100
 				}
@@ -147,6 +147,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}()
 
 		for bias = int64(0); bias < fileSize; {
+
 			d = make([]byte, w.MTU-9, w.MTU+8)
 			if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
 				errCh <- err
@@ -173,6 +174,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 					}
 				}
 			}
+
 		}
 	}()
 
