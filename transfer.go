@@ -27,7 +27,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	var errCh chan error = make(chan error, 2)   // 错误通知管道
 	var endCh chan int64 = make(chan int64, 1)   // 结束通知管道
 	var rseCh chan []byte = make(chan []byte, 8) // 重发通知管道
-	var flag bool = true
+	var flag bool = true                         // 结束使能, 用于退出协程
 	defer func() { flag = false }()
 	w.ts = time.Millisecond * 10 // 数据包间隙暂停时间
 	var resFlag bool = false     // 重发时, 控制主发送进程停止
@@ -55,6 +55,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 
 			da = make([]byte, 1500)
 			if l, err = w.conn.Read(da); err != nil {
+				// read: connection refused 表示对方关闭, UDP是无连接的, 这由于ICMP通知的
 				errCh <- err
 				return
 			} else {
@@ -65,6 +66,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							errCh <- err
 							return
 						} else {
+							keep = true
 							fmt.Println("接收到文件重发包")
 							if len(rseCh) < cap(rseCh) {
 								rseCh <- da
@@ -91,7 +93,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							e.Errlog(err)
 						}
 
-					} else if bias == 0x3FFFFF0010 {
+					} else if bias == 0x3FFFFF0010 { // 速度控制包
 
 						if da, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil && len(da) == 4 {
 							w.Speed = int(da[0])<<24 + int(da[1])<<16 + int(da[2])<<8 + int(da[3])
@@ -130,51 +132,57 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}
 	}()
 
+	// 更新ts
+	go func() {
+		for flag {
+			if w.Speed > 0 {
+				w.ts = time.Duration(1e9 * w.MTU / w.Speed) //- 20000
+			} else {
+				w.ts = time.Millisecond * 100
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
+
 	// ((主进程)发送
 	go func() {
-		var d []byte
-		var sEnd bool
-		var dl, bias int64
-		go func() { // 更新ts
+		var (
+			d        []byte
+			sEnd     bool // 发送最后数据报使能
+			dl, bias int64
+		)
+
+		var biasChan chan int64 = make(chan int64)
+		go func() {
 			for flag {
-				if w.Speed > 0 {
-					w.ts = time.Duration(1e9 * w.MTU / w.Speed) //- 20000
-				} else {
-					w.ts = time.Millisecond * 100
+				d = make([]byte, w.MTU-9, w.MTU+8)
+				if d, dl, sEnd, err = r.ReadFile(d, <-biasChan, w.key); e.Errlog(err) {
+					errCh <- err
+					return
 				}
-				time.Sleep(time.Millisecond * 10)
+				if _, err = w.conn.Write(d); e.Errlog(err) {
+					errCh <- err
+					return
+				}
+				if sEnd { // 最后数据包必达
+					for flag {
+						time.Sleep(time.Millisecond * 500)
+						if _, err = w.conn.Write(d); e.Errlog(err) {
+							errCh <- err
+							return
+						}
+					}
+				}
 			}
 		}()
 
 		for bias = int64(0); bias < fileSize; {
-
-			d = make([]byte, w.MTU-9, w.MTU+8)
-			if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
-				errCh <- err
-				return
-			}
-			if _, err = w.conn.Write(d); e.Errlog(err) {
-				errCh <- err
-				return
-			}
+			biasChan <- bias
 			bias = bias + dl
-			// fmt.Println(w.ts)
-
 			time.Sleep(w.ts)
 			if resFlag {
 				time.Sleep(w.ts)
 			}
-
-			if sEnd { // 最后数据包必达
-				for {
-					time.Sleep(time.Millisecond * 500)
-					if _, err = w.conn.Write(d); e.Errlog(err) {
-						errCh <- err
-						return
-					}
-				}
-			}
-
 		}
 	}()
 

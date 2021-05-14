@@ -37,7 +37,8 @@ type Read struct {
 }
 type Write struct {
 	sudp
-	ts time.Duration
+	ts time.Duration //
+	sp time.Duration //发送本身延迟
 }
 
 // NewRead
