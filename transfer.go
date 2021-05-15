@@ -68,7 +68,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 						} else {
 							keep = true
 
-							if len(rseCh) < cap(rseCh) {
+							if len(rseCh) <= cap(rseCh) {
 								rseCh <- da
 							}
 						}
@@ -237,7 +237,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 				if re := rec.OweAll(); len(re) > 0 {
-					time.Sleep(time.Millisecond * 500)
+					time.Sleep(time.Millisecond * 200)
 					for _, v := range re {
 
 						if err = r.sendResendDataPacket(v); e.Errlog(err) {
