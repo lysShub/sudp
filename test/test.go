@@ -34,6 +34,10 @@ func main() {
 
 }
 
+func main1() {
+	difference()
+}
+
 //
 func main2() {
 	fh, err := os.Open(`C:\Users\LYS\Desktop\a.pkg`)
@@ -102,10 +106,6 @@ func main2() {
 	}
 }
 
-func main1() {
-	difference()
-}
-
 // 比较两个文件的差异
 func difference() {
 	fh, err := os.Open(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp\Telegram.apk`)
@@ -162,6 +162,20 @@ func difference() {
 			}
 			fmt.Println(b)
 			fmt.Println(b1)
+
+			fmt.Println("------------------------")
+			da, tad := make([]byte, 10), make([]byte, 10)
+			for i := f; i < int(fi.Size()); i += 1372 {
+				if _, err = fh.ReadAt(da, int64(i)); err != nil {
+					fmt.Println(err)
+					return
+				}
+				if !bytes.Equal(da, tad) {
+					fmt.Println("在第" + strconv.Itoa(i))
+					fmt.Println(da)
+					return
+				}
+			}
 			return
 		}
 

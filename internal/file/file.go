@@ -73,7 +73,7 @@ func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 		}
 
 		l := int64(len(d))
-		if r.rang[1] < bias+l-1 {
+		if r.rang[1] < bias+l-1 { // 读取到缓存块
 
 			_, err := r.Fh.ReadAt(r.block, bias)
 			if err != nil {
@@ -135,7 +135,6 @@ type Wt struct {
 	bs       int64    // block size 快速写入模式下的暂存数据块大小
 	block    []byte   // 储存数据块，存入暂存数据必须连续且小于
 	rang     [2]int64 // 记录block中数据的位置
-	dalen    int64    // 记录block中有效数据长度(处理最后块)
 	rbias    int64
 }
 
@@ -157,70 +156,32 @@ func (w *Wt) init() {
 //  传入参数: 原始数据, 偏置, 是否清空缓存(最后数据)
 //  块中数据不连续也会被写入
 func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
-	_, err = w.Fh.WriteAt(d, bias)
-	return nil
 
 	w.init()
 
-	dl := int64(len(d))
+	if bias < w.rang[0] { // 非缓存范围 直接写入
+		_, err = w.Fh.WriteAt(d, bias)
+		return err
+	}
 
-	//清空缓存块
-	if w.rang[1] < bias+dl-1 || end {
-		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
+	l := int64(len(d))
+
+	if w.rang[0]+w.bs < bias+l { //清空缓存块 w.rang[0]+w.bs-1 < bias+l-1
+		_, err = w.Fh.WriteAt(w.block[:w.rang[1]-w.rang[0]+1], w.rang[0])
 
 		// 重置
 		w.rang[0] = bias
-		w.rang[1] = bias + w.bs
-		copy(w.block[0:dl], d)
-		w.dalen = dl
-
-	} else {
-		if bias >= w.rang[0] { //存入缓存块
-			copy(w.block[bias-w.rang[0]:bias-w.rang[0]+dl], d)
-			w.dalen = w.dalen + dl
-
-		} else { // 非缓存范围 直接写入
-			_, err = w.Fh.WriteAt(d, bias)
-		}
 	}
+	//存入缓存块
+	copy(w.block[bias-w.rang[0]:], d)
+	w.rang[1] = bias + l - 1
 
 	if end { // 清空缓存
-		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
-		// 之后的数据都不会有缓存块了
-		w.rang[0] = w.rang[1]
-		w.dalen = 0
+		w.Fh.WriteAt(w.block[:w.rang[1]-w.rang[0]+1], w.rang[0])
+
+		// 之后的数据都不会再使用缓存块了
+		w.rang[0] = w.rang[1] + 1
 	}
 
-	return err
-}
-
-// WriteFile 写入文件
-//  传入参数: 原始数据, 偏置, 是否清空缓存
-func (f *Wt) WriteFile1(d []byte, bias int64, end bool) error {
-	f.init()
-
-	dl := int64(len(d))
-
-	//重置缓存块
-	if f.rang[1] < bias+dl-1 || end {
-		_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
-
-		// 重置
-		f.rang[0] = bias
-		f.rang[1] = bias + f.bs
-		copy(f.block[0:dl], d)
-		f.rbias = dl
-		if end { // 清空缓存
-			_, err = f.Fh.WriteAt(f.block[:f.rbias], f.rang[0])
-		}
-
-	} else {
-		if bias >= f.rang[0] { //存入缓存块
-			copy(f.block[bias-f.rang[0]:bias-f.rang[0]+dl], d)
-			f.rbias = f.rbias + dl
-		} else { // 非缓存范围 直接写入
-			_, err = f.Fh.WriteAt(d, bias)
-		}
-	}
 	return err
 }
