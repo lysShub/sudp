@@ -67,7 +67,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 							return
 						} else {
 							keep = true
-							fmt.Println("接收到文件重发包")
+
 							if len(rseCh) < cap(rseCh) {
 								rseCh <- da
 							}
@@ -226,8 +226,8 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 
 	go func() { // 重发
 		for flag {
-			time.Sleep(strategy.ResendTime)
 			if !end {
+				time.Sleep(strategy.ResendTime)
 				if re := rec.Owe(); len(re) > 0 {
 
 					if err = r.sendResendDataPacket(re); e.Errlog(err) {
@@ -237,6 +237,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 				if re := rec.OweAll(); len(re) > 0 {
+					time.Sleep(time.Millisecond * 500)
 					for _, v := range re {
 
 						if err = r.sendResendDataPacket(v); e.Errlog(err) {
