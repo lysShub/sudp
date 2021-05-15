@@ -2,6 +2,7 @@
 package strategy
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -18,13 +19,20 @@ var (
 	speeds    []int = make([]int, delaylen) // 设定速度记录器
 	deviation int   = 5                     // 误差范围, 默认93.75% = (100-100/16)/100, 表示当前速度大于预定速度的93.75%即判定达到预期
 	growRate  int   = 100                   // 增长率, 默认2^n增长，按照指数(l+growRate/100)^n倍增长
-
+	nowSpeeds []int
 )
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
 	// return 1572864 // 1.5MB
-	return 1048576
+	// return 1048576 * 3
+
+	if len(nowSpeeds) < 20 {
+		nowSpeeds = append(nowSpeeds, nowSpeed)
+	} else if len(nowSpeeds) == 20 {
+		nowSpeeds = append(nowSpeeds, nowSpeed)
+		fmt.Println(nowSpeeds)
+	}
 
 	var ns int
 	if nowSpeed == 0 {

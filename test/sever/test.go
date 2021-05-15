@@ -7,15 +7,13 @@ import (
 	"github.com/lysShub/sudp"
 )
 
-// log.Fatal(http.ListenAndServe(":80", http.FileServer(http.Dir(`D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`))))
-
 func main() {
 
 	// 发送
 	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
-		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986} // HW st
-		// r.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
-		r.Path = `../../tmp/r/Telegram.apk`
+		r.Laddr = &net.UDPAddr{IP: nil, Port: 19986} // HW st net.ParseIP("192.168.0.50")
+		// r.Path = `../../tmp/r/Telegram.apk`
+		r.Path = `./go.zip`
 		return r
 	})
 	if err != nil {

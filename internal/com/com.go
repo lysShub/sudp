@@ -123,23 +123,32 @@ func Wrap() string {
 
 // GetNetIP 获取网络号：NetIP ,用于判断是否在局域网中
 func GetNetIP() (net.IP, error) {
-	conn, err := net.Dial("ip4:1", "114.114.114.114")
+	conn, err := net.Dial("udp", "3.3.3.3:80")
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	var LanIP net.IP
-	var mask net.IPMask
-	switch v := conn.LocalAddr().(type) {
-	case *net.IPAddr:
-		LanIP = v.IP
-		mask = LanIP.DefaultMask()
+	var LanIP = conn.LocalAddr().(*net.UDPAddr).IP
+
+	ifaces, err := net.Interfaces()
+	if err != nil || len(ifaces) == 0 {
+		return nil, errors.New("no network card discover")
 	}
-	if LanIP == nil || mask == nil {
-		return nil, errors.New("unknown error")
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			if tIP, netIP, err := net.ParseCIDR(a.String()); err == nil {
+				if LanIP.Equal(tIP) {
+					return netIP.IP, nil
+				}
+			}
+		}
 	}
-	return LanIP.Mask(mask), nil
+	return nil, errors.New("unknown error")
 }
 
 // Info floder info

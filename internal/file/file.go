@@ -158,12 +158,13 @@ func (w *Wt) init() {
 //  块中数据不连续也会被写入
 func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
 	_, err = w.Fh.WriteAt(d, bias)
-	return err
+	return nil
+
 	w.init()
 
 	dl := int64(len(d))
 
-	//重置缓存块
+	//清空缓存块
 	if w.rang[1] < bias+dl-1 || end {
 		_, err = w.Fh.WriteAt(w.block[:w.dalen], w.rang[0])
 

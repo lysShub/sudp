@@ -10,13 +10,17 @@ import (
 	"time"
 
 	"github.com/lysShub/sudp"
+	"github.com/lysShub/sudp/internal/file"
+	"github.com/lysShub/sudp/internal/packet"
 )
 
 func main() {
 	// 接受方
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
-		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986} // HW st
-		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
+		r.Raddr = &net.UDPAddr{IP: nil, Port: 19986} // HW st net.ParseIP("10.8.57.42")
+		// r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
+		r.Laddr = &net.UDPAddr{IP: nil, Port: 19987}
+		r.Path = `./tmp/`
 		return r
 	})
 
@@ -32,38 +36,72 @@ func main() {
 
 }
 
-// 本机
+//
 func main2() {
-	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
-		r.Raddr = &net.UDPAddr{IP: net.ParseIP("10.8.145.88"), Port: 19987}
-		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
-		return r
-	})
-
+	fh, err := os.Open(`C:\Users\LYS\Desktop\a.pkg`)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	a := time.Now()
-	fmt.Println(r.Read(nil))
-	fmt.Println("耗时", time.Now().Sub(a))
-}
 
-// 虚拟机
-func main3() {
-	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
-		r.Raddr = &net.UDPAddr{IP: net.ParseIP("192.168.43.183"), Port: 19986}
-		r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
-		return r
-	})
-
+	wh, err := os.OpenFile(`C:\Users\LYS\Desktop\b.pkg`, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	a := time.Now()
-	fmt.Println(r.Read(nil))
-	fmt.Println("耗时", time.Now().Sub(a))
+
+	r := new(file.Rd)
+	r.Fh = fh
+
+	w := new(file.Wt)
+	w.Fh = wh
+
+	a := time.Now().Unix()
+	key := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
+	key = nil
+
+	// 初始化完成
+	d := make([]byte, 1370, 1420)
+	for bias := int64(0); ; {
+		p, dl, end, err := r.ReadFile(d, bias, key)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		/* 发送完成 */
+		dl2, bias2, end2, err := packet.ParsePacket(p, key)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if dl != dl2 {
+			fmt.Println("dl != dl2")
+			return
+		}
+		if end != end2 {
+			fmt.Println("end != end2")
+			return
+		}
+		if bias != bias2 {
+			fmt.Println("bias != bias2")
+			return
+		}
+
+		// 写入
+		if err = w.WriteFile(p[:dl2], bias2, end2); err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if end {
+			b := time.Now().Unix()
+			fmt.Println("耗时", b-a, "速度", 943/(b-a))
+			fmt.Println(bias)
+			return
+		}
+		bias = bias + dl
+	}
 }
 
 func main1() {
