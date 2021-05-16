@@ -12,8 +12,8 @@ import (
 
 // 速度控制策略
 var (
-	SpeedTime  time.Duration = time.Millisecond * 500 // 发送速度控制包的周期
-	ResendTime time.Duration = time.Millisecond * 300 // 重发数据包检测周期
+	SpeedTime  time.Duration = time.Millisecond * 1500 // 发送速度控制包的周期
+	ResendTime time.Duration = time.Millisecond * 100  // 重发数据包检测周期
 
 	delaylen  int   = 1                     // 速度记录器speeds的长度(>=1), 延时检测
 	speeds    []int = make([]int, delaylen) // 设定速度记录器
@@ -24,7 +24,7 @@ var (
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
-	// return 1572864 // 1.5MB
+	// return 1048576
 	// return 1048576 * 3
 
 	if len(nowSpeeds) < 20 {

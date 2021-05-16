@@ -119,7 +119,6 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		for flag {
 			select {
 			case re = <-rseCh:
-
 				resFlag = true // 优先处理重发数据, 暂停主进程发送
 				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
 					resFlag = false
@@ -240,14 +239,12 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 				if re := rec.OweAll(); len(re) > 0 {
-					time.Sleep(time.Millisecond * 200)
+					time.Sleep(time.Millisecond * 50)
 					for _, v := range re {
-
 						if err = r.sendResendDataPacket(v); e.Errlog(err) {
 							ch <- err
 							return
 						}
-						time.Sleep(time.Millisecond)
 					}
 				}
 			}
@@ -508,7 +505,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
-	var counter int = 1
+	// var counter int = 1
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -527,10 +524,11 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			counter++
-			if counter > w.ds {
-				time.Sleep(15625000) //1/64s
-			}
+			// counter++
+			// if counter > w.ds {
+			// 	time.Sleep(15625000) //1/64s
+			// 	counter = 0
+			// }
 		}
 	}
 
