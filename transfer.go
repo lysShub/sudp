@@ -505,7 +505,6 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
-	// var counter int = 1
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -524,11 +523,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			// counter++
-			// if counter > w.ds {
-			// 	time.Sleep(15625000) //1/64s
-			// 	counter = 0
-			// }
+
 		}
 	}
 
