@@ -37,8 +37,8 @@ type Read struct {
 }
 type Write struct {
 	sudp
-	ts time.Duration //
-	sp time.Duration //发送本身延迟
+	// ts time.Duration //
+	ds int // 一个周期内发送的数据包数(一个周期1/64s)
 }
 
 // NewRead

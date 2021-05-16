@@ -174,7 +174,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 		}
 	}
 	w.Raddr = raddr
-	if w.conn, err = net.DialUDP("udp", w.Laddr, raddr); e.Errlog(err) { // 替换为Connected UDP
+	if w.conn, err = net.DialUDP("udp", w.Laddr, w.Raddr); e.Errlog(err) { // 替换为Connected UDP
 		return err
 	}
 

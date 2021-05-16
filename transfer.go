@@ -29,8 +29,8 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	var rseCh chan []byte = make(chan []byte, 8) // 重发通知管道
 	var flag bool = true                         // 结束使能, 用于退出协程
 	defer func() { flag = false }()
-	w.ts = time.Millisecond * 10 // 数据包间隙暂停时间
-	var resFlag bool = false     // 重发时, 控制主发送进程停止
+	w.ds = 2
+	var resFlag bool = false // 重发时, 控制主发送进程停止, 即优先处理重发数据
 
 	// 接收
 	go func() {
@@ -136,9 +136,10 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	go func() {
 		for flag {
 			if w.Speed > 0 {
-				w.ts = time.Duration(1e9 * w.MTU / w.Speed) //- 20000
+				// w.ts = time.Duration(10 * 1e9 * w.MTU / w.Speed) //- 20000
+				w.ds = w.Speed >> 6 / w.MTU
 			} else {
-				w.ts = time.Millisecond * 100
+				w.ds = 2
 			}
 			time.Sleep(time.Millisecond * 100)
 		}
@@ -177,11 +178,13 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}()
 
 		for bias = int64(0); bias < fileSize; {
-			biasChan <- bias
-			bias = bias + dl
-			time.Sleep(w.ts)
+			for i := 0; i < w.ds && bias < fileSize; i++ {
+				biasChan <- bias
+				bias = bias + dl
+			}
+			time.Sleep(15625000) // 1/64s
 			if resFlag {
-				time.Sleep(w.ts)
+				time.Sleep(15625000)
 			}
 		}
 	}()
@@ -505,6 +508,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
+	var counter int = 1
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -523,7 +527,10 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			time.Sleep(w.ts * 2)
+			counter++
+			if counter > w.ds {
+				time.Sleep(15625000) //1/64s
+			}
 		}
 	}
 
