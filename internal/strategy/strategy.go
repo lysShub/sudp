@@ -12,8 +12,9 @@ import (
 
 // 速度控制策略
 var (
-	SpeedTime  time.Duration = time.Millisecond * 500 // 发送速度控制包的周期
-	ResendTime time.Duration = time.Millisecond * 500 // 重发数据包检测周期
+	SpeedTime time.Duration = time.Millisecond * 500 // 发送速度控制包的周期
+	// ResendTime time.Duration = time.Millisecond * 500 // 重发数据包检测周期 局域网
+	ResendTime time.Duration = time.Millisecond * 80 // 重发数据包检测周期 非局域网
 
 	delaylen  int   = 1                     // 速度记录器speeds的长度(>=1), 延时检测
 	speeds    []int = make([]int, delaylen) // 设定速度记录器

@@ -120,7 +120,7 @@ func (r *Recorder) EndOwe(start int64) (int64, int, [][2]int64) {
 	var total int
 
 	for j := 2; j < l-1; j = j + 2 {
-		if r.rec[j]-1 > start {
+		if r.rec[j]-1 >= start {
 			var i int = j
 			for ; i < l-1 && i <= 200; i = i + 2 {
 				R = append(R, [2]int64{
@@ -153,7 +153,7 @@ func (r *Recorder) OweAll() [][][2]int64 {
 		t = append(t, [2]int64{
 			r.rec[i-1] + 1, r.rec[i] - 1,
 		})
-		if i%200 == 0 {
+		if i > 200 { //i%200 == 0
 			R = append(R, t)
 			t = nil
 		}

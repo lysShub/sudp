@@ -208,10 +208,6 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	defer rec.End()
 	rec.NewRecorder()
 
-	time.AfterFunc(time.Second*8, func() {
-		fmt.Println(rec.Expose())
-	})
-
 	var da []byte = make([]byte, 1500)
 
 	var end, tend, flag = false, false, true // 接收到最后包, _ , 结束传输
@@ -235,8 +231,8 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	}()
 
 	go func() { // 重发
-		var endRsIndex int64 = 0
-		var total int
+		// var endRsIndex int64 = 0
+		// var total int
 		var re [][2]int64
 		for flag {
 			if !end {
@@ -249,13 +245,14 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 
-				endRsIndex, total, re = rec.EndOwe(endRsIndex)
-				if err = r.sendResendDataPacket(re); e.Errlog(err) {
-					ch <- err
-					return
+				rr := rec.OweAll()
+				for _, re = range rr {
+					if err = r.sendResendDataPacket(re); e.Errlog(err) {
+						ch <- err
+						return
+					}
 				}
-
-				time.Sleep(time.Duration(total*1e9/r.newSpeed) - r.moreDelay)
+				time.Sleep(strategy.ResendTime)
 
 			}
 
@@ -512,11 +509,14 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 	var sb, eb int64
 	var d []byte
 	var dl int64
+	var dy time.Duration
 
 	for i := 9; i <= len(da); i = i + 10 {
 
 		sb = int64(da[i-9])<<32 + int64(da[i-8])<<24 + int64(da[i-7])<<16 + int64(da[i-6])<<8 + int64(da[i-5])
 		eb = int64(da[i-4])<<32 + int64(da[i-3])<<24 + int64(da[i-2])<<16 + int64(da[i-1])<<8 + int64(da[i-0])
+
+		dy = time.Duration(1e9*w.MTU/w.Speed) - w.moreDelay
 
 		for i := sb; i <= eb; i = i + int64(w.MTU) {
 			if int64(w.MTU)+i-1 > eb {
@@ -533,6 +533,8 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
+			time.Sleep(dy)
+
 		}
 	}
 
