@@ -509,7 +509,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 	var sb, eb int64
 	var d []byte
 	var dl int64
-	var dy time.Duration
+	// var dy time.Duration
 
 	for i := 9; i <= len(da); i = i + 10 {
 
