@@ -516,7 +516,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 		sb = int64(da[i-9])<<32 + int64(da[i-8])<<24 + int64(da[i-7])<<16 + int64(da[i-6])<<8 + int64(da[i-5])
 		eb = int64(da[i-4])<<32 + int64(da[i-3])<<24 + int64(da[i-2])<<16 + int64(da[i-1])<<8 + int64(da[i-0])
 
-		dy = time.Duration(1e9*w.MTU/w.Speed) - w.moreDelay
+		// dy = time.Duration(1e9*w.MTU/w.Speed) - w.moreDelay
 
 		for i := sb; i <= eb; i = i + int64(w.MTU) {
 			if int64(w.MTU)+i-1 > eb {
@@ -533,7 +533,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-			time.Sleep(dy)
+			// time.Sleep(dy)
 
 		}
 	}
