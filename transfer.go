@@ -136,9 +136,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		for flag {
 			if w.Speed > 0 {
 				// w.ts = time.Duration(10 * 1e9 * w.MTU / w.Speed) //- 20000
-				w.ds = w.Speed >> 6 / w.MTU
+				w.ds = w.Speed >> 4 / w.MTU
 			} else {
-				w.ds = 5
+				w.ds = 1
 			}
 			time.Sleep(time.Millisecond * 100)
 		}
@@ -181,9 +181,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				biasChan <- bias
 				bias = bias + dl
 			}
-			time.Sleep(50000000 - w.moreDelay) // 50ms
+			time.Sleep(62500000 - w.moreDelay) // 1/16s
 			if resFlag {
-				time.Sleep(50000000 - w.moreDelay)
+				time.Sleep(62500000 - w.moreDelay)
 			}
 		}
 	}()
