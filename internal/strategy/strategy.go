@@ -24,7 +24,7 @@ var (
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
-	// return 1048576
+	return 1048576
 	// return 1048576 * 3
 
 	if len(nowSpeeds) < 20 {

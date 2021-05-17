@@ -38,7 +38,8 @@ type Read struct {
 type Write struct {
 	sudp
 	// ts time.Duration //
-	ds int // 一个周期内发送的数据包数(一个周期1/64s)
+	ds        int           // 一个周期内发送的数据包数(一个周期50ms)
+	moreDelay time.Duration //多余延时
 }
 
 // NewRead
@@ -103,6 +104,7 @@ func NewWrite(f func(r *Write) *Write) (*Write, error) {
 	y.TimeOut = time.Second
 	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
 	// 无需设置Raddr
+	y.moreDelay = moreDalay()
 	y = f(y)
 	if y.Path == "" {
 		return nil, errors.New("not set Path")

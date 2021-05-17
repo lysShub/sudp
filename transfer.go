@@ -29,7 +29,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	var rseCh chan []byte = make(chan []byte, 8) // 重发通知管道
 	var flag bool = true                         // 结束使能, 用于退出协程
 	defer func() { flag = false }()
-	w.ds = 2
+	w.ds = 5
 	var resFlag bool = false // 重发时, 控制主发送进程停止, 即优先处理重发数据
 
 	// 接收
@@ -138,7 +138,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				// w.ts = time.Duration(10 * 1e9 * w.MTU / w.Speed) //- 20000
 				w.ds = w.Speed >> 6 / w.MTU
 			} else {
-				w.ds = 2
+				w.ds = 5
 			}
 			time.Sleep(time.Millisecond * 100)
 		}
@@ -181,9 +181,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				biasChan <- bias
 				bias = bias + dl
 			}
-			time.Sleep(15625000) // 1/64s
+			time.Sleep(50000000 - w.moreDelay) // 50ms
 			if resFlag {
-				time.Sleep(15625000)
+				time.Sleep(50000000 - w.moreDelay)
 			}
 		}
 	}()
@@ -523,7 +523,6 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}
-
 		}
 	}
 
@@ -549,4 +548,16 @@ func openFile(path string) (*os.File, error) {
 		return nil, err
 	}
 	return fh, nil
+}
+
+// moreDalay time.Sleep()与实际延时有出入, 通常会比设定时间长一定的时间, 本函数返回其多余的时长
+// 尤其见于Windows上面, 部分机型可达10ms
+func moreDalay() time.Duration {
+	var d, total time.Duration = time.Nanosecond, 0
+	for i := 0; i < 32; i++ {
+		a := time.Now()
+		time.Sleep(d)
+		total = total + time.Since(a)
+	}
+	return total >> 5
 }
