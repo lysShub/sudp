@@ -24,12 +24,12 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	r := new(file.Rd) // 读取器
 	r.Fh = fh
 
-	var errCh chan error = make(chan error, 2)   // 错误通知管道
-	var endCh chan int64 = make(chan int64, 1)   // 结束通知管道
-	var rseCh chan []byte = make(chan []byte, 8) // 重发通知管道
-	var flag bool = true                         // 结束使能, 用于退出协程
+	var errCh chan error = make(chan error, 2)     // 错误通知管道
+	var endCh chan int64 = make(chan int64, 1)     // 结束通知管道
+	var rseCh chan []byte = make(chan []byte, 100) // 重发通知管道
+	var flag bool = true                           // 结束使能, 用于退出协程
 	defer func() { flag = false }()
-	w.ds = 5
+	w.ds = 5                 // 最小发送速度为5*20*MTU/s
 	var resFlag bool = false // 重发时, 控制主发送进程停止, 即优先处理重发数据
 
 	// 接收
@@ -87,6 +87,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 
 						if _, err = packet.SecureDecrypt(da[:dl], w.controlKey); err == nil {
 							fmt.Println("收到文件结束包")
+							fmt.Println("总发送数据", w.total)
 							endCh <- fileSize
 							return
 						} else {
@@ -137,8 +138,11 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			if w.Speed > 0 {
 				// w.ts = time.Duration(10 * 1e9 * w.MTU / w.Speed) //- 20000
 				w.ds = w.Speed >> 4 / w.MTU
+				if w.ds < 5 {
+					w.ds = 5
+				}
 			} else {
-				w.ds = 1
+				w.ds = 5
 			}
 			time.Sleep(time.Millisecond * 100)
 		}
@@ -152,11 +156,12 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			dl, bias int64
 		)
 
-		var biasChan chan int64 = make(chan int64)
-		go func() {
-			for flag {
+		var a time.Time
+		for bias = int64(0); bias < fileSize; {
+			a = time.Now()
+			for i := 0; i < w.ds && bias < fileSize; i++ {
 				d = make([]byte, w.MTU-9, w.MTU+8)
-				if d, dl, sEnd, err = r.ReadFile(d, <-biasChan, w.key); e.Errlog(err) {
+				if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
 					errCh <- err
 					return
 				}
@@ -164,7 +169,12 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 					errCh <- err
 					return
 				}
+				bias = bias + dl
+
+				w.total += dl
+
 				if sEnd { // 最后数据包必达
+					fmt.Println("-----------------发送文件结束包---------------------")
 					for flag {
 						time.Sleep(time.Millisecond * 500)
 						if _, err = w.conn.Write(d); e.Errlog(err) {
@@ -174,16 +184,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 					}
 				}
 			}
-		}()
-
-		for bias = int64(0); bias < fileSize; {
-			for i := 0; i < w.ds && bias < fileSize; i++ {
-				biasChan <- bias
-				bias = bias + dl
-			}
-			time.Sleep(62500000 - w.moreDelay) // 1/16s
+			time.Sleep(62500000 - w.moreDelay - time.Since(a)) // 1/16s
 			if resFlag {
-				time.Sleep(62500000 - w.moreDelay)
+				time.Sleep(62500000 - w.moreDelay - time.Since(a))
 			}
 		}
 	}()
@@ -205,6 +208,10 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	defer rec.End()
 	rec.NewRecorder()
 
+	time.AfterFunc(time.Second*8, func() {
+		fmt.Println(rec.Expose())
+	})
+
 	var da []byte = make([]byte, 1500)
 
 	var end, tend, flag = false, false, true // 接收到最后包, _ , 结束传输
@@ -219,6 +226,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 
 			// 速度控制
 			n := strategy.NewSpeed(r.Speed)
+			r.newSpeed = n
 			fmt.Println("新速度", n, r.Speed)
 			if err = r.sendSpeedControlPacket(n); e.Errlog(err) {
 				fmt.Println(err)
@@ -227,33 +235,32 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	}()
 
 	go func() { // 重发
+		var endRsIndex int64 = 0
+		var total int
+		var re [][2]int64
 		for flag {
 			if !end {
 				time.Sleep(strategy.ResendTime)
-				if re := rec.Owe(); len(re) > 0 {
-
+				if re = rec.Owe(); len(re) > 0 {
 					if err = r.sendResendDataPacket(re); e.Errlog(err) {
 						ch <- err
 						return
 					}
 				}
 			} else { // 收到最后包, 只剩重发, 改变重发策略
-				if re := rec.OweAll(); len(re) > 0 {
-					time.Sleep(time.Millisecond * 50)
-					for _, v := range re {
-						if err = r.sendResendDataPacket(v); e.Errlog(err) {
-							ch <- err
-							return
-						}
-					}
+
+				endRsIndex, total, re = rec.EndOwe(endRsIndex)
+				if err = r.sendResendDataPacket(re); e.Errlog(err) {
+					ch <- err
+					return
 				}
+
+				time.Sleep(time.Duration(total*1e9/r.newSpeed) - r.moreDelay)
+
 			}
 
 			if end && rec.Blocks() == 1 {
 				fmt.Println("文件传输完成")
-				if rec.HasCover() {
-					e.Errlog(errors.New("有覆盖写入"))
-				}
 				ch <- nil
 				return
 			}
@@ -276,7 +283,6 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 			time.Sleep(time.Millisecond * 200)
 		}
 	}()
-	var total int = 0
 
 	go func() { // 接收数据包
 
@@ -297,11 +303,12 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 				if bias < 0x3FFFFF0000 {
 					if err = w.WriteFile(da[:dl], bias, end); e.Errlog(err) {
+						// write XXX: file already closed 由于传输已经完成, 还有“迟到的数据包”
 						ch <- err
 					}
 					rec.Add(bias, bias+dl-1) //记录
-					counter += l
-					total += l
+					counter += int(dl)
+					r.total += dl
 
 				} else {
 					fmt.Println("意外偏置", bias)
@@ -314,7 +321,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 
 	select {
 	case err = <-ch:
-		fmt.Println("-------------接收到总共数据----------------", total)
+		fmt.Println("-------------接收到总共数据----------------", r.total)
 		flag = false
 		return err
 	}
@@ -340,7 +347,6 @@ func (r *Read) sendSpeedControlPacket(ns int) error {
 }
 
 func (r *Read) sendResendDataPacket(ownRec [][2]int64) error {
-	// fmt.Println(ownRec)
 
 	var da []byte = make([]byte, 0)
 	for _, v := range ownRec {
@@ -442,7 +448,7 @@ func (r *Read) sendFileEndPacket() error {
 		if da, _, _, err = packet.PackagePacket(da, 0x3FFFFF00FF, r.key, false); e.Errlog(err) {
 			return err
 		} else {
-			for i := 0; i < 8; i++ {
+			for i := 0; i < 20; i++ {
 				if _, err = r.conn.Write(da); e.Errlog(err) {
 					return err
 				}
@@ -505,6 +511,7 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 
 	var sb, eb int64
 	var d []byte
+	var dl int64
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -517,9 +524,12 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 			} else {
 				d = make([]byte, w.MTU, w.MTU+15)
 			}
-			if d, _, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
+			if d, dl, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
 				return err
 			}
+
+			w.total += dl
+
 			if _, err = w.conn.Write(d); e.Errlog(err) {
 				return err
 			}

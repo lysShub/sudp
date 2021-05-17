@@ -24,9 +24,9 @@ type sudp struct {
 	Raddr    *net.UDPAddr  //
 
 	conn       *net.UDPConn
-	key        []byte // 传输密钥, 可能为nil
-	controlKey []byte // 必须被设置, 用于加密控制包的数据
-
+	key        []byte        // 传输密钥, 可能为nil
+	controlKey []byte        // 必须被设置, 用于加密控制包的数据
+	moreDelay  time.Duration //多余延时
 }
 
 var Version uint8 = 0b00000001
@@ -34,12 +34,14 @@ var err error
 
 type Read struct {
 	sudp
+	newSpeed int
+	total    int64 // 记录总接收
 }
 type Write struct {
 	sudp
 	// ts time.Duration //
-	ds        int           // 一个周期内发送的数据包数(一个周期50ms)
-	moreDelay time.Duration //多余延时
+	ds    int   // 一个周期内发送的数据包数(一个周期50ms)
+	total int64 // 记录总发送
 }
 
 // NewRead

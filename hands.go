@@ -177,6 +177,9 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	if w.conn, err = net.DialUDP("udp", w.Laddr, w.Raddr); e.Errlog(err) { // 替换为Connected UDP
 		return err
 	}
+	if err = w.conn.SetWriteBuffer(1024 * 1024 * 8); err != nil {
+		return err
+	}
 
 	// 握手
 	w.controlKey = createKey()

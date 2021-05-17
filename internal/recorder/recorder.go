@@ -107,6 +107,36 @@ func (r *Recorder) Owe() [][2]int64 {
 	return R
 }
 
+func (r *Recorder) EndOwe(start int64) (int64, int, [][2]int64) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	var l int = len(r.rec)
+	if l < 4 {
+		return start, 0, nil
+	}
+
+	var R [][2]int64
+	var end int64
+	var total int
+
+	for j := 2; j < l-1; j = j + 2 {
+		if r.rec[j]-1 > start {
+			var i int = j
+			for ; i < l-1 && i <= 200; i = i + 2 {
+				R = append(R, [2]int64{
+					r.rec[i-1] + 1, r.rec[i] - 1,
+				})
+				total += int(r.rec[i] - r.rec[i-1] - 1)
+
+			}
+			end = r.rec[i-2] - 1
+			break
+		}
+	}
+
+	return end, total, R
+}
+
 // Owe 统计缺失文件总和, 返回所有缺失数据
 func (r *Recorder) OweAll() [][][2]int64 {
 	r.lock.Lock()
