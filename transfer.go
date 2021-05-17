@@ -117,17 +117,24 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	// 重发
 	go func() {
 		var re []byte
+		var cou, n int
 		for flag {
 			select {
 			case re = <-rseCh:
-				resFlag = true // 优先处理重发数据, 暂停主进程发送
-				if err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
-					resFlag = false
+				// resFlag = true // 优先处理重发数据, 暂停主进程发送
+				if n, err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
+					// resFlag = false
 					errCh <- err
 					return
 				}
-				resFlag = false
+				cou += n
+				// resFlag = false
 			case <-time.After(time.Second):
+			}
+
+			if cou > w.ds {
+				cou = 0
+				time.Sleep(62500000 - w.moreDelay)
 			}
 		}
 	}()
@@ -504,12 +511,12 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 	}
 }
 
-func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
+func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) (int, error) {
 
 	var sb, eb int64
 	var d []byte
 	var dl int64
-	// var dy time.Duration
+	var dy int
 
 	for i := 9; i <= len(da); i = i + 10 {
 
@@ -525,20 +532,21 @@ func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) error {
 				d = make([]byte, w.MTU, w.MTU+15)
 			}
 			if d, dl, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
-				return err
+				return 0, err
 			}
 
 			w.total += dl
 
 			if _, err = w.conn.Write(d); e.Errlog(err) {
-				return err
+				return 0, err
 			}
 			// time.Sleep(dy)
+			dy++
 
 		}
 	}
 
-	return nil
+	return dy, nil
 }
 
 // openFile 打开文件, 不存在将会创建、无论声明路径
