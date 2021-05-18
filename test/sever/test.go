@@ -10,13 +10,14 @@ import (
 func main() {
 
 	// 发送
-	w, err := sudp.NewWrite(func(r *sudp.Write) *sudp.Write {
-		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986} // HW st net.ParseIP("192.168.0.50")
+	w, err := sudp.NewWrite(func(w *sudp.Write) *sudp.Write {
+		w.Laddr = &net.UDPAddr{IP: nil, Port: 19986} // HW st net.ParseIP("192.168.0.50")
 		// r.Path = `/mnt/sdcard/a/Telegram.apk`
-		r.Path = `../../tmp/r/Telegram.apk`
-		// r.Path = `E:\浏览器下载\LibreOffice_7.1.1_Win_x64.msi`
+		// r.Path = `../../tmp/r/Telegram.apk`
+		w.Path = `E:\浏览器下载\LibreOffice_7.1.1_Win_x64.msi`
 		// r.Path = `C:\Users\LYS\Desktop\Telegram.apk`
-		return r
+		w.Encrypt = false
+		return w
 	})
 	if err != nil {
 		fmt.Println(err)

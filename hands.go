@@ -66,7 +66,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				return err
 			}
 		}
-		if _, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF8000 {
+		if _, bias, _, err := packet.ParsePacket(rda[:n], nil); err == nil && bias == 0x3FFFFF8000 { // 任务握手包
 			step = 1
 			if rda[0] != Version { // 版本不相同
 				sda = []byte{10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 252, 0, 8, 106, 249, 147, 14}
@@ -80,6 +80,9 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				}
 				if rda[3] != 0 { // 文件数据加密
 					encryp = true
+					fmt.Println("文件数据加密")
+				} else {
+					fmt.Println("文件数据不加密")
 				}
 				var pubkey []byte
 				if priKey, pubkey, err = crypter.RsaGenKey(); e.Errlog(err) {
@@ -120,13 +123,17 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 			if rkey, err := crypter.RsaDecrypt(rda[:dl], priKey); e.Errlog(err) {
 				return err
 			} else {
+				fmt.Println(dl, "密钥", rkey)
 				r.controlKey = rkey
 			}
 			if encryp {
 				r.key = r.controlKey
+				fmt.Println("文件数据加密")
 			} else {
 				r.key = nil
+				fmt.Println("文件数据不加密")
 			}
+
 			break
 		}
 	}
@@ -184,7 +191,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	// 握手
 	w.controlKey = createKey()
 	var isEncrypto uint8 = 0x0
-	if w.Encrypt {
+	if w.Encrypt { // 文件数据加密
 		isEncrypto = 0xf
 		w.key = w.controlKey
 	}
@@ -235,11 +242,10 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			if tda, err = crypter.RsaEncrypt(w.key, rda[3:dl]); e.Errlog(err) {
 				return err
 			}
-			// 确认确认握手
 			if sda, _, _, err = packet.PackagePacket(tda, 0x3FFFFF2000, nil, false); e.Errlog(err) {
 				return err
 			}
-			w.conn.Write(sda)
+			w.conn.Write(sda) // // 确认确认握手
 			step = 1
 			break
 		}
