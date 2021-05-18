@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/lysShub/sudp/internal/file"
-	"github.com/lysShub/sudp/internal/packet"
-	"github.com/lysShub/sudp/internal/recorder"
-	"github.com/lysShub/sudp/internal/strategy"
+	"gitee.com/lysshub/sudp/internal/file"
+	"gitee.com/lysshub/sudp/internal/packet"
+	"gitee.com/lysshub/sudp/internal/recorder"
+	"gitee.com/lysshub/sudp/internal/strategy"
 
 	"github.com/lysShub/e"
 )

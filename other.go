@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"gitee.com/lysshub/sudp/internal/packet"
 	"github.com/lysShub/e"
-	"github.com/lysShub/sudp/internal/packet"
 )
 
 func (r *Read) sendSpeedControlPacket(ns int) error {

@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lysShub/sudp"
-	"github.com/lysShub/sudp/internal/file"
-	"github.com/lysShub/sudp/internal/packet"
+	"gitee.com/lysshub/sudp"
+	"gitee.com/lysshub/sudp/internal/file"
+	"gitee.com/lysshub/sudp/internal/packet"
 )
 
 func main() {

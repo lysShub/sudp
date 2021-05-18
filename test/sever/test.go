@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/lysShub/sudp"
+	"gitee.com/lysshub/sudp"
 )
 
 func main() {
