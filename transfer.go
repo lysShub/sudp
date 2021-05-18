@@ -121,19 +121,20 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		for flag {
 			select {
 			case re = <-rseCh:
-				// resFlag = true // 优先处理重发数据, 暂停主进程发送
+				resFlag = true // 优先处理重发数据, 暂停主进程发送
 				if n, err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
-					// resFlag = false
+					resFlag = false
 					errCh <- err
 					return
 				}
 				cou += n
-				// resFlag = false
+				resFlag = false
 			case <-time.After(time.Second):
 			}
 
 			if cou > w.ds {
 				cou = 0
+				time.Sleep(62500000 - w.moreDelay)
 				time.Sleep(62500000 - w.moreDelay)
 			}
 		}
@@ -218,7 +219,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	var da []byte = make([]byte, 1500)
 
 	var end, tend, flag = false, false, true // 接收到最后包, _ , 结束传输
-	defer func() { flag = false }()
+	defer func() { flag = false; fmt.Println(rec.Expose()) }()
 
 	var ch chan error = make(chan error)
 	var counter int = 0 // 记录一段时间收到的数据
@@ -258,8 +259,10 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 						ch <- err
 						return
 					}
+					time.Sleep(time.Duration(1e9*100*r.MTU/r.newSpeed) - r.moreDelay)
 				}
 				time.Sleep(strategy.ResendTime)
+				fmt.Println("完成一个周期")
 
 			}
 

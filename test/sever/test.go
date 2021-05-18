@@ -14,6 +14,7 @@ func main() {
 		r.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986} // HW st net.ParseIP("192.168.0.50")
 		// r.Path = `/mnt/sdcard/a/Telegram.apk`
 		r.Path = `../../tmp/r/Telegram.apk`
+		// r.Path = `E:\浏览器下载\LibreOffice_7.1.1_Win_x64.msi`
 		// r.Path = `C:\Users\LYS\Desktop\Telegram.apk`
 		return r
 	})

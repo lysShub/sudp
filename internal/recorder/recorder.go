@@ -153,8 +153,10 @@ func (r *Recorder) OweAll() [][][2]int64 {
 		t = append(t, [2]int64{
 			r.rec[i-1] + 1, r.rec[i] - 1,
 		})
-		if i > 200 { //i%200 == 0
-			R = append(R, t)
+		if i%200 == 0 { //
+			var tmp [][2]int64 = make([][2]int64, len(t))
+			copy(tmp, t)
+			R = append(R, tmp)
 			t = nil
 		}
 	}
