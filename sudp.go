@@ -15,7 +15,7 @@ import (
 
 type sudp struct {
 	Encrypt  bool          // 是否加密, 默认加密
-	MTU      int           // MTU, 上行/下行不相同, 默认1372
+	MTU      int           // MTU, SUDP包大小、包括包头, 上行/下行不相同, 默认1372
 	TimeOut  time.Duration // 数据包超时时间
 	Path     string        // 路径, 发送方为发送文件(夹), 接受方位存放路径
 	Schedule int64         // 已传输进度
@@ -106,7 +106,7 @@ func NewWrite(f func(r *Write) *Write) (*Write, error) {
 	y.TimeOut = time.Second
 	y.Laddr = &net.UDPAddr{IP: nil, Port: 19986}
 	// 无需设置Raddr
-	y.moreDelay = moreDalay()
+	y.moreDelay = 0 //moreDalay()
 	y = f(y)
 	if y.Path == "" {
 		return nil, errors.New("not set Path")

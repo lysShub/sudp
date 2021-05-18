@@ -24,10 +24,11 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	r := new(file.Rd) // 读取器
 	r.Fh = fh
 
-	var errCh chan error = make(chan error, 2)     // 错误通知管道
-	var endCh chan int64 = make(chan int64, 1)     // 结束通知管道
-	var rseCh chan []byte = make(chan []byte, 100) // 重发通知管道
-	var flag bool = true                           // 结束使能, 用于退出协程
+	var errCh chan error = make(chan error, 2)  // 错误通知管道
+	var endCh chan int64 = make(chan int64, 1)  // 结束通知管道
+	var senCh chan int64 = make(chan int64, 64) // 发送管道
+
+	var flag bool = true // 结束使能, 用于退出协程
 	defer func() { flag = false }()
 	w.ds = 5                 // 最小发送速度为5*20*MTU/s
 	var resFlag bool = false // 重发时, 控制主发送进程停止, 即优先处理重发数据
@@ -35,10 +36,10 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	// 接收
 	go func() {
 		var (
-			da       []byte
-			bias, dl int64
-			l        int
-			keep     bool = false
+			da               []byte
+			bias, dl, eb, sb int64
+			l                int
+			keep             bool = false
 		)
 		go func() {
 			for flag { // 15s超时(最多30s)
@@ -52,7 +53,6 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}()
 
 		for flag {
-
 			da = make([]byte, 1500)
 			if l, err = w.conn.Read(da); err != nil {
 				// read: connection refused 表示对方关闭, UDP是无连接的, 这由于ICMP通知的
@@ -68,9 +68,17 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 						} else {
 							keep = true
 
-							if len(rseCh) <= cap(rseCh) {
-								rseCh <- da
+							resFlag = true
+							for i := 9; i <= len(da); i = i + 10 {
+								sb = int64(da[i-9])<<32 + int64(da[i-8])<<24 + int64(da[i-7])<<16 + int64(da[i-6])<<8 + int64(da[i-5])
+								eb = int64(da[i-4])<<32 + int64(da[i-3])<<24 + int64(da[i-2])<<16 + int64(da[i-1])<<8 + int64(da[i-0])
+
+								for j := sb; j <= eb; j = j + int64(w.MTU-9) {
+									senCh <- j
+								}
 							}
+							resFlag = false
+
 						}
 
 					} else if bias == 0x3FFFFF0008 { // 文件进度包
@@ -114,32 +122,6 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}
 	}()
 
-	// 重发
-	go func() {
-		var re []byte
-		var cou, n int
-		for flag {
-			select {
-			case re = <-rseCh:
-				resFlag = true // 优先处理重发数据, 暂停主进程发送
-				if n, err = w.receiveResendDataPacket(re, r); e.Errlog(err) {
-					resFlag = false
-					errCh <- err
-					return
-				}
-				cou += n
-				resFlag = false
-			case <-time.After(time.Second):
-			}
-
-			if cou > w.ds {
-				cou = 0
-				time.Sleep(62500000 - w.moreDelay)
-				time.Sleep(62500000 - w.moreDelay)
-			}
-		}
-	}()
-
 	// 更新ts
 	go func() {
 		for flag {
@@ -156,46 +138,50 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}
 	}()
 
-	// ((主进程)发送
+	// 发送
 	go func() {
-		var (
-			d        []byte
-			sEnd     bool // 发送最后数据报使能
-			dl, bias int64
-		)
+		var d []byte
+		var count, n int
+		var bf time.Time = time.Now()
+		for flag {
 
-		var a time.Time
+			d = make([]byte, w.MTU-9, w.MTU+16)
+			if d, _, _, err = r.ReadFile(d, <-senCh, w.key); e.Errlog(err) {
+				errCh <- err
+				return
+			}
+			if n, err = w.conn.Write(d); e.Errlog(err) {
+				errCh <- err
+				return
+			}
+
+			w.total = w.total + int64(n)
+
+			count++
+			if count > w.ds {
+				time.Sleep(62500000 - w.moreDelay - time.Since(bf))
+				bf = time.Now()
+				count = 0
+			}
+		}
+	}()
+
+	// 主进程发送
+	go func() {
+		var bias int64
 		for bias = int64(0); bias < fileSize; {
-			a = time.Now()
-			for i := 0; i < w.ds && bias < fileSize; i++ {
-				d = make([]byte, w.MTU-9, w.MTU+8)
-				if d, dl, sEnd, err = r.ReadFile(d, bias, w.key); e.Errlog(err) {
-					errCh <- err
-					return
-				}
-				if _, err = w.conn.Write(d); e.Errlog(err) {
-					errCh <- err
-					return
-				}
-				bias = bias + dl
-
-				w.total += dl
-
-				if sEnd { // 最后数据包必达
-					fmt.Println("-----------------发送文件结束包---------------------")
-					for flag {
-						time.Sleep(time.Millisecond * 500)
-						if _, err = w.conn.Write(d); e.Errlog(err) {
-							errCh <- err
-							return
-						}
-					}
-				}
+			if !resFlag {
+				senCh <- bias
+				bias = bias + int64(w.MTU-9)
+			} else {
+				time.Sleep(time.Millisecond * 5)
 			}
-			time.Sleep(62500000 - w.moreDelay - time.Since(a)) // 1/16s
-			if resFlag {
-				time.Sleep(62500000 - w.moreDelay - time.Since(a))
-			}
+		}
+		// 最后包必达
+		fmt.Println("----------发送最后数据包-----------")
+		for flag {
+			time.Sleep(time.Millisecond * 500)
+			senCh <- fileSize - 100
 		}
 	}()
 
@@ -239,8 +225,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 	}()
 
 	go func() { // 重发
-		// var endRsIndex int64 = 0
-		// var total int
+
 		var re [][2]int64
 		for flag {
 			if !end {
@@ -251,6 +236,7 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 						return
 					}
 				}
+
 			} else { // 收到最后包, 只剩重发, 改变重发策略
 
 				rr := rec.OweAll()
@@ -263,6 +249,8 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 				}
 				time.Sleep(strategy.ResendTime)
 				fmt.Println("完成一个周期")
+				fmt.Println(rec.Expose())
+				fmt.Println(rr[0])
 
 			}
 
@@ -354,6 +342,9 @@ func (r *Read) sendSpeedControlPacket(ns int) error {
 }
 
 func (r *Read) sendResendDataPacket(ownRec [][2]int64) error {
+	if len(ownRec) == 0 {
+		return nil
+	}
 
 	var da []byte = make([]byte, 0)
 	for _, v := range ownRec {
@@ -512,44 +503,6 @@ func (w *Write) sendFileInfoAndReceiveStartPacket(name string, fs int64) error {
 			}
 		}
 	}
-}
-
-func (w *Write) receiveResendDataPacket(da []byte, r *file.Rd) (int, error) {
-
-	var sb, eb int64
-	var d []byte
-	var dl int64
-	var dy int
-
-	for i := 9; i <= len(da); i = i + 10 {
-
-		sb = int64(da[i-9])<<32 + int64(da[i-8])<<24 + int64(da[i-7])<<16 + int64(da[i-6])<<8 + int64(da[i-5])
-		eb = int64(da[i-4])<<32 + int64(da[i-3])<<24 + int64(da[i-2])<<16 + int64(da[i-1])<<8 + int64(da[i-0])
-
-		// dy = time.Duration(1e9*w.MTU/w.Speed) - w.moreDelay
-
-		for i := sb; i <= eb; i = i + int64(w.MTU) {
-			if int64(w.MTU)+i-1 > eb {
-				d = make([]byte, eb-i+1, eb-i+14)
-			} else {
-				d = make([]byte, w.MTU, w.MTU+15)
-			}
-			if d, dl, _, err = r.ReadFile(d, i, w.key); e.Errlog(err) {
-				return 0, err
-			}
-
-			w.total += dl
-
-			if _, err = w.conn.Write(d); e.Errlog(err) {
-				return 0, err
-			}
-			// time.Sleep(dy)
-			dy++
-
-		}
-	}
-
-	return dy, nil
 }
 
 // openFile 打开文件, 不存在将会创建、无论声明路径
