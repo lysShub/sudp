@@ -5,7 +5,6 @@ package sudp
 import (
 	"crypto/md5"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -50,7 +49,6 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	var step int = 0
 	time.AfterFunc(r.TimeOut, func() {
 		if step < 1 {
-			fmt.Println("关闭conn")
 			r.conn.Close()
 		}
 	})
@@ -80,9 +78,7 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				}
 				if rda[3] != 0 { // 文件数据加密
 					encryp = true
-					fmt.Println("文件数据加密")
 				} else {
-					fmt.Println("文件数据不加密")
 				}
 				var pubkey []byte
 				if priKey, pubkey, err = crypter.RsaGenKey(); e.Errlog(err) {
@@ -101,7 +97,6 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	// 确认确认握手
 	time.AfterFunc(r.TimeOut, func() {
 		if step < 2 {
-			fmt.Println("关闭确认确认握手")
 			r.conn.Close()
 		}
 	})
@@ -123,17 +118,13 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 			if rkey, err := crypter.RsaDecrypt(rda[:dl], priKey); e.Errlog(err) {
 				return err
 			} else {
-				fmt.Println(dl, "密钥", rkey)
 				r.controlKey = rkey
 			}
 			if encryp {
 				r.key = r.controlKey
-				fmt.Println("文件数据加密")
 			} else {
 				r.key = nil
-				fmt.Println("文件数据不加密")
 			}
-
 			break
 		}
 	}
@@ -215,7 +206,6 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	var step int = 0
 	time.AfterFunc(w.TimeOut, func() {
 		if step < 1 {
-			fmt.Println("关闭确认握手")
 			w.conn.Close()
 		}
 	})
@@ -239,7 +229,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			w.MTU = int(rda[1])<<8 + int(rda[2])
 
 			var tda []byte = make([]byte, 128)
-			if tda, err = crypter.RsaEncrypt(w.key, rda[3:dl]); e.Errlog(err) {
+			if tda, err = crypter.RsaEncrypt(w.controlKey, rda[3:dl]); e.Errlog(err) {
 				return err
 			}
 			if sda, _, _, err = packet.PackagePacket(tda, 0x3FFFFF2000, nil, false); e.Errlog(err) {
@@ -254,7 +244,6 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	// 任务开始包
 	time.AfterFunc(w.TimeOut, func() {
 		if step < 2 {
-			fmt.Println("未收到任务开始包")
 			w.conn.Close()
 		}
 	})

@@ -156,8 +156,6 @@ func (w *Wt) init() {
 //  传入参数: 原始数据, 偏置, 是否清空缓存(最后数据)
 //  块中数据不连续也会被写入
 func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
-	_, err = w.Fh.WriteAt(d, bias)
-	return err
 
 	w.init()
 

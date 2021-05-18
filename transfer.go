@@ -24,9 +24,9 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 	r := new(file.Rd) // 读取器
 	r.Fh = fh
 
-	var errCh chan error = make(chan error, 2)  // 错误通知管道
-	var endCh chan int64 = make(chan int64, 1)  // 结束通知管道
-	var senCh chan int64 = make(chan int64, 64) // 发送管道
+	var errCh chan error = make(chan error, 2)   // 错误通知管道
+	var endCh chan int64 = make(chan int64, 1)   // 结束通知管道
+	var senCh chan int64 = make(chan int64, 256) // 发送管道
 
 	var flag bool = true // 结束使能, 用于退出协程
 	defer func() { flag = false }()
