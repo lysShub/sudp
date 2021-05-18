@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -35,7 +34,6 @@ type Rd struct {
 // init 初始化函数
 func (r *Rd) init() error {
 	if !r.initflag {
-		fmt.Println("启动")
 
 		fi, err := r.Fh.Stat()
 		if err != nil {
@@ -141,7 +139,6 @@ type Wt struct {
 // init 初始化函数
 func (w *Wt) init() {
 	if !w.initflag {
-		fmt.Println("启动")
 
 		w.bs = 4194304
 		w.block = make([]byte, w.bs)

@@ -1,7 +1,6 @@
 package recorder
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -150,13 +149,11 @@ func (r *Recorder) OweSpecify(start int64, CountRange int) int {
 		if r.rec[i] >= start {
 			for j := i; j < l-2; j++ {
 				if r.rec[j] >= end {
-					fmt.Println("统计范围", start, end, r.rec[l-1])
 					return int(O * 1e4 / (end - start))
 				} else {
 					O = O + r.rec[j+1] - r.rec[j] - 1
 				}
 			}
-			fmt.Println("统计范围", start, end, r.rec[l-1])
 			return int(O * 1e4 / (end - start))
 		}
 	}

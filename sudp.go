@@ -2,7 +2,6 @@ package sudp
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"time"
@@ -133,12 +132,10 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 		if err = w.receiveHandshake(f); e.Errlog(err) {
 			return err
 		}
-		fmt.Println("握手成功")
 
 		// ---------------发送数据-------------------- //
 		var fh *os.File
 		for i, n := range ifs.N {
-			fmt.Println("发送name", n)
 			if fh, err = os.Open(basePath + `/` + n); e.Errlog(err) {
 				return err
 			}
@@ -152,7 +149,6 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 				return err
 			}
 			if sch != ifs.S[i] {
-				fmt.Println("传输中止")
 				return nil
 			}
 		}
@@ -173,5 +169,4 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 	}
 
 	return nil
-
 }

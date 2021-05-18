@@ -2,7 +2,6 @@
 package strategy
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -33,7 +32,6 @@ func NewSpeed(nowSpeed int) int {
 		nowSpeeds = append(nowSpeeds, nowSpeed)
 	} else if len(nowSpeeds) == 20 {
 		nowSpeeds = append(nowSpeeds, nowSpeed)
-		fmt.Println(nowSpeeds)
 	}
 
 	var ns int
