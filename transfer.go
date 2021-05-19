@@ -251,8 +251,9 @@ func (r *Read) receiveData(fh *os.File, fs int64) error {
 
 	go func() { // 心跳(进度包)
 		for flag {
-			time.Sleep(time.Second * 3)
-			if err = r.sendSchedulPacket(rec.Shche()); e.Errlog(err) {
+			time.Sleep(time.Second)
+			r.Schedule = rec.Shche()
+			if err = r.sendSchedulPacket(r.Schedule); e.Errlog(err) {
 				ch <- err
 				return
 			}

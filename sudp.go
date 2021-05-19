@@ -17,8 +17,9 @@ type sudp struct {
 	MTU      int           // MTU, SUDP包大小、包括包头, 上行/下行不相同, 默认1372
 	TimeOut  time.Duration // 数据包超时时间
 	Path     string        // 路径, 发送方为发送文件(夹), 接受方位存放路径
-	Schedule int64         // 完整传输进度
+	Schedule int64         // 文件中完整传输的进度
 	FileSize int64         // 当前传输文件大小
+	FileName string        // 当前传输文件名
 	Speed    int           // 当前传输速度 B/s
 	Laddr    *net.UDPAddr  //
 	Raddr    *net.UDPAddr  //
@@ -78,6 +79,7 @@ func (r *Read) Read(requestBody []byte) error {
 
 			} else {
 				r.FileSize = fs
+				r.FileName = name
 
 				if fh, err := openFile(r.Path + `/` + name); e.Errlog(err) {
 					return err
@@ -141,6 +143,7 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 		var fh *os.File
 		for i, n := range ifs.N {
 			w.FileSize = ifs.S[i]
+			w.FileName = ifs.N[i]
 
 			if fh, err = os.Open(basePath + `/` + n); e.Errlog(err) {
 				return err
