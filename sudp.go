@@ -17,7 +17,8 @@ type sudp struct {
 	MTU      int           // MTU, SUDP包大小、包括包头, 上行/下行不相同, 默认1372
 	TimeOut  time.Duration // 数据包超时时间
 	Path     string        // 路径, 发送方为发送文件(夹), 接受方位存放路径
-	Schedule int64         // 已传输进度
+	Schedule int64         // 完整传输进度
+	FileSize int64         // 当前传输文件大小
 	Speed    int           // 当前传输速度 B/s
 	Laddr    *net.UDPAddr  //
 	Raddr    *net.UDPAddr  //
@@ -41,6 +42,7 @@ type Write struct {
 	// ts time.Duration //
 	ds    int   // 一个周期内发送的数据包数(一个周期50ms)
 	total int64 // 记录总发送
+
 }
 
 // NewRead
@@ -75,6 +77,8 @@ func (r *Read) Read(requestBody []byte) error {
 				return nil
 
 			} else {
+				r.FileSize = fs
+
 				if fh, err := openFile(r.Path + `/` + name); e.Errlog(err) {
 					return err
 				} else {
@@ -136,6 +140,8 @@ func (w Write) Write(f func(requestBody []byte) bool) error {
 		// ---------------发送数据-------------------- //
 		var fh *os.File
 		for i, n := range ifs.N {
+			w.FileSize = ifs.S[i]
+
 			if fh, err = os.Open(basePath + `/` + n); e.Errlog(err) {
 				return err
 			}
