@@ -1,12 +1,12 @@
 package main
 
 import (
+	"btest/sudp/internal/file"
+	"btest/sudp/internal/packet"
 	"bytes"
 	"fmt"
 	"os"
 	"strconv"
-	"sudp/internal/file"
-	"sudp/internal/packet"
 	"time"
 )
 
@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 
-	wh, err := os.OpenFile(`D:\b.mkv`, os.O_CREATE|os.O_WRONLY, 0666)
+	wh, err := os.OpenFile(`C:\b.mkv`, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -32,18 +32,32 @@ func main() {
 
 	a := time.Now().Unix()
 	key := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
+	key = nil
+
+	var bias int64
+	var count int64 = 0
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			fmt.Println(count >> 20) // MB/s  , bias>>30
+			count = 0
+		}
+	}()
 
 	// 初始化完成
 	d := make([]byte, 1370, 1420)
-	for bias := int64(0); ; {
+
+	for bias = int64(0); ; {
 		p, dl, end, err := r.ReadFile(d, bias, key)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		/* 发送完成 */
-		dl2, bias2, end2, err := packet.ParseDataPacket(p, key)
+		count += dl
+
+		/* 读取完成 */
+		dl2, bias2, end2, err := packet.ParsePacket(p, key)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -85,7 +99,7 @@ func main1() {
 		fmt.Println(err)
 		return
 	}
-	fh2, err := os.Open(`D:\b.mkv`)
+	fh2, err := os.Open(`C:\b.mkv`)
 	if err != nil {
 		fmt.Println(err)
 		return

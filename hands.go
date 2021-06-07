@@ -10,16 +10,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lysShub/sudp/internal/crypter"
-	"github.com/lysShub/sudp/internal/packet"
+	"btest/sudp/internal/crypter"
+	"btest/sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )
 
-// sendHandshake 握手, 接收方
-func (r *Read) sendHandshake(requestBody []byte) error {
+// 开始握手 握手, 接收方
+func (r *Read) 开始握手(requestBody []byte) error {
 	var rda, sda []byte = make([]byte, 1500), make([]byte, 0, 64)
 	if r.conn, err = net.DialUDP("udp", r.Laddr, r.Raddr); e.Errlog(err) {
+		return err
+	}
+	if err = r.conn.SetReadBuffer(1024 * 1024 * 8 * 4); err != nil {
 		return err
 	}
 	var flag bool = true
@@ -30,8 +33,6 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	if sda, _, _, err = packet.PackagePacket(requestBody, 0x3FFFFF0000, nil, false); err != nil {
 		return err
 	}
-
-	// 回复
 	var ch chan error = make(chan error, 1)
 	go func() {
 		for flag {
@@ -78,8 +79,8 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 				}
 				if rda[3] != 0 { // 文件数据加密
 					encryp = true
-				} else {
 				}
+
 				var pubkey []byte
 				if priKey, pubkey, err = crypter.RsaGenKey(); e.Errlog(err) {
 					return err
@@ -118,10 +119,10 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 			if rkey, err := crypter.RsaDecrypt(rda[:dl], priKey); e.Errlog(err) {
 				return err
 			} else {
-				r.controlKey = rkey
+				r.secureKey = rkey
 			}
 			if encryp {
-				r.key = r.controlKey
+				r.key = r.secureKey
 			} else {
 				r.key = nil
 			}
@@ -130,21 +131,21 @@ func (r *Read) sendHandshake(requestBody []byte) error {
 	}
 
 	// 开始
-	if da, err := packet.SecureEncrypt(nil, r.controlKey); e.Errlog(err) {
+	if da, err := packet.SecureEncrypt(nil, r.secureKey); e.Errlog(err) {
 		return err
 	} else {
 		if sda, _, _, err = packet.PackagePacket(da, 0x3FFFFF1000, r.key, false); e.Errlog(err) {
 			return err
 		}
-		for i := 0; i < 5; i++ {
+		for i := 0; i < 10; i++ {
 			r.conn.Write(sda)
 		}
 	}
 	return nil
 }
 
-// receiveHandshake 接收握手, 发送方
-func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
+// 等待握手 接收握手, 发送方
+func (w *Write) 等待握手(f func(requestBody []byte) bool) error {
 	var rda, sda []byte = make([]byte, 1500), nil
 	var n int
 	var flag bool = true
@@ -175,16 +176,16 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 	if w.conn, err = net.DialUDP("udp", w.Laddr, w.Raddr); e.Errlog(err) { // 替换为Connected UDP
 		return err
 	}
-	if err = w.conn.SetWriteBuffer(1024 * 1024 * 8); err != nil {
+	if err = w.conn.SetWriteBuffer(1024 * 1024 * 8 * 4); err != nil {
 		return err
 	}
 
 	// 握手
-	w.controlKey = createKey()
+	w.secureKey = createKey()
 	var isEncrypto uint8 = 0x0
 	if w.Encrypt { // 文件数据加密
 		isEncrypto = 0xf
-		w.key = w.controlKey
+		w.key = w.secureKey
 	}
 	if sda, _, _, err = packet.PackagePacket([]byte{Version, uint8(w.MTU >> 8), uint8(w.MTU), isEncrypto}, 0x3FFFFF8000, nil, false); e.Errlog(err) {
 		return err
@@ -229,7 +230,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			w.MTU = int(rda[1])<<8 + int(rda[2])
 
 			var tda []byte = make([]byte, 128)
-			if tda, err = crypter.RsaEncrypt(w.controlKey, rda[3:dl]); e.Errlog(err) {
+			if tda, err = crypter.RsaEncrypt(w.secureKey, rda[3:dl]); e.Errlog(err) {
 				return err
 			}
 			if sda, _, _, err = packet.PackagePacket(tda, 0x3FFFFF2000, nil, false); e.Errlog(err) {
@@ -260,7 +261,7 @@ func (w *Write) receiveHandshake(f func(requestBody []byte) bool) error {
 			}
 		}
 		if n, bias, _, err := packet.ParsePacket(rda[:n], w.key); err == nil && bias == 0x3FFFFF1000 {
-			if _, err = packet.SecureDecrypt(rda[:n], w.controlKey); err == nil {
+			if _, err = packet.SecureDecrypt(rda[:n], w.secureKey); err == nil {
 				step = 2
 				break // 收到开始包, 握手完成
 			}

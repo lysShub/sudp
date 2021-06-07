@@ -1,7 +1,6 @@
 package recorder
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -109,30 +108,59 @@ func (r *Recorder) Owe() [][2]int64 {
 	return R
 }
 
+// Complete 传输完成
+func (r *Recorder) Complete(fs int64) bool {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	if len(r.rec) == 2 {
+		if r.rec[0] == 0 {
+			if r.rec[1] == fs-1 {
+				return true
+			} else {
+				return false
+			}
+		} else {
+			return false
+		}
+	} else {
+		return false
+	}
+
+}
+
 // Owe 统计缺失文件总和, 返回所有缺失数据
 func (r *Recorder) OweAll() [][][2]int64 {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	var l int = len(r.rec)
-	if l < 4 {
+	if l < 2 {
 		return nil
 	}
 
 	var R [][][2]int64
 	var t [][2]int64
 
-	for i := 2; i < l-1; i = i + 2 {
-		t = append(t, [2]int64{
-			r.rec[i-1] + 1, r.rec[i] - 1,
+	if r.rec[0] != 0 {
+		R = append(R, [][2]int64{
+			{0, r.rec[0] - 1},
 		})
-		if i%200 == 0 { //
-			var tmp [][2]int64 = make([][2]int64, len(t))
-			copy(tmp, t)
-			R = append(R, tmp)
-			t = nil
+	} else {
+		if l < 4 {
+			return nil
 		}
+		for i := 2; i < l-1; i = i + 2 {
+			t = append(t, [2]int64{
+				r.rec[i-1] + 1, r.rec[i] - 1,
+			})
+			if i%200 == 0 { //
+				var tmp [][2]int64 = make([][2]int64, len(t))
+				copy(tmp, t)
+				R = append(R, tmp)
+				t = nil
+			}
+		}
+		R = append(R, t)
 	}
-	R = append(R, t)
 
 	return R
 }
@@ -150,13 +178,11 @@ func (r *Recorder) OweSpecify(start int64, CountRange int) int {
 		if r.rec[i] >= start {
 			for j := i; j < l-2; j++ {
 				if r.rec[j] >= end {
-					fmt.Println("统计范围", start, end, r.rec[l-1])
 					return int(O * 1e4 / (end - start))
 				} else {
 					O = O + r.rec[j+1] - r.rec[j] - 1
 				}
 			}
-			fmt.Println("统计范围", start, end, r.rec[l-1])
 			return int(O * 1e4 / (end - start))
 		}
 	}

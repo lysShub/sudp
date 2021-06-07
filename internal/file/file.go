@@ -1,12 +1,11 @@
 package file
 
 import (
-	"fmt"
 	"io"
 	"os"
 
-	"github.com/lysShub/sudp/internal/com"
-	"github.com/lysShub/sudp/internal/packet"
+	"btest/sudp/internal/com"
+	"btest/sudp/internal/packet"
 )
 
 var err error
@@ -35,7 +34,6 @@ type Rd struct {
 // init 初始化函数
 func (r *Rd) init() error {
 	if !r.initflag {
-		fmt.Println("启动")
 
 		fi, err := r.Fh.Stat()
 		if err != nil {
@@ -64,6 +62,8 @@ func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 	if err = r.init(); err != nil {
 		return nil, 0, false, err
 	}
+
+	return r.randomRead(r.Fh, d, bias, key)
 
 	// 启用快速读取模式
 	if r.fm {
@@ -99,14 +99,19 @@ func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 	return r.randomRead(r.Fh, d, bias, key)
 }
 
+var D []byte = make([]byte, 1372)
+
 // readfile
 // 	随机读取，适配最后一包
 func (r *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
+	if err = r.init(); err != nil {
+		return nil, 0, false, err
+	}
 
 	_, err := fh.ReadAt(d, bias)
 	if err != nil {
 		if err == io.EOF {
-			if r.fs-bias == 1 {
+			if r.fs-bias <= 1 {
 				d = nil
 				return nil, 0, true, nil
 			}
@@ -141,7 +146,6 @@ type Wt struct {
 // init 初始化函数
 func (w *Wt) init() {
 	if !w.initflag {
-		fmt.Println("启动")
 
 		w.bs = 4194304
 		w.block = make([]byte, w.bs)
@@ -158,6 +162,11 @@ func (w *Wt) init() {
 func (w *Wt) WriteFile(d []byte, bias int64, end bool) error {
 
 	w.init()
+
+	if true {
+		_, err = w.Fh.WriteAt(d, bias)
+		return err
+	}
 
 	if bias < w.rang[0] { // 非缓存范围 直接写入
 		_, err = w.Fh.WriteAt(d, bias)

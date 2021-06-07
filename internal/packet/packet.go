@@ -5,7 +5,7 @@ import (
 	"errors"
 	"hash/crc32"
 
-	"github.com/lysShub/sudp/internal/crypter"
+	"btest/sudp/internal/crypter"
 )
 
 // PackagePacket 打包为协议包
@@ -31,7 +31,6 @@ func PackagePacket(d []byte, b int64, key []byte, final bool) ([]byte, int64, bo
 
 	// 加密
 	if key != nil {
-
 		var l uint8 = uint8(16 - len(d)%16)
 		for i := uint8(0); i < l; i++ {
 			d = append(d, uint8(l))
