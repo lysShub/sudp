@@ -1,4 +1,4 @@
-module gitee.com/lysshub/sudp
+module sudp
 
 go 1.15
 

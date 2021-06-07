@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/lysshub/sudp/internal/packet"
+	"sudp/internal/packet"
+
 	"github.com/lysShub/e"
 )
 

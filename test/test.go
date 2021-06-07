@@ -9,15 +9,16 @@ import (
 	"strconv"
 	"time"
 
-	"gitee.com/lysshub/sudp"
-	"gitee.com/lysshub/sudp/internal/file"
-	"gitee.com/lysshub/sudp/internal/packet"
+	"sudp"
+	"sudp/internal/file"
+	"sudp/internal/packet"
 )
 
 func main() {
 	// 接受方 10.8.37.129
+
 	r, err := sudp.NewRead(func(r *sudp.Read) *sudp.Read {
-		r.Raddr = &net.UDPAddr{IP: net.ParseIP("119.3.166.124"), Port: 19986} // HW st net.ParseIP("119.3.166.124")
+		r.Raddr = &net.UDPAddr{IP: nil, Port: 19986} // HW st net.ParseIP("119.3.166.124")
 		r.Laddr = &net.UDPAddr{IP: nil, Port: 19987}
 		// r.Path = `D:\OneDrive\code\go\src\github.com\lysShub\sudp\tmp`
 		r.Path = `./`

@@ -4,8 +4,8 @@ import (
 	"io"
 	"os"
 
-	"gitee.com/lysshub/sudp/internal/com"
-	"gitee.com/lysshub/sudp/internal/packet"
+	"sudp/internal/com"
+	"sudp/internal/packet"
 )
 
 var err error
@@ -20,7 +20,7 @@ var err error
 
 // Rd  Read 文件读取
 type Rd struct {
-	Fh *os.File
+	Fh *os.File // 文件句柄
 
 	fs               int64    // 文件大小
 	initflag         bool     // 初始化标志
@@ -59,9 +59,6 @@ func (r *Rd) init() error {
 //   返回：打包好数据包，原始数据长度，是否最后包。
 //   参数d应该有足够的容量(len+15); 否则会浪费内存。正常情况下, 最后一个数据包读取的数据长度可能和len(d)不相同
 func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
-	if err = r.init(); err != nil {
-		return nil, 0, false, err
-	}
 
 	// 启用快速读取模式
 	if r.fm {

@@ -26,7 +26,11 @@ var (
 
 // NewSpeed 更新速度
 func NewSpeed(nowSpeed int) int {
-	// return 1048576 * 3
+	// 20 15.5
+	// 30 19.8
+	// 50 20.5
+	// 100 18.7
+	return 1048576 * 100
 
 	if len(nowSpeeds) < 20 {
 		nowSpeeds = append(nowSpeeds, nowSpeed)

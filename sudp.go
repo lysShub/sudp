@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"gitee.com/lysshub/sudp/internal/com"
-	"gitee.com/lysshub/sudp/internal/packet"
+	"sudp/internal/com"
+	"sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )

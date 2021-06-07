@@ -4,13 +4,14 @@ package sudp
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
-	"gitee.com/lysshub/sudp/internal/file"
-	"gitee.com/lysshub/sudp/internal/packet"
-	"gitee.com/lysshub/sudp/internal/recorder"
-	"gitee.com/lysshub/sudp/internal/strategy"
+	"sudp/internal/file"
+	"sudp/internal/packet"
+	"sudp/internal/recorder"
+	"sudp/internal/strategy"
 
 	"github.com/lysShub/e"
 )
@@ -130,6 +131,12 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 			time.Sleep(time.Millisecond * 100)
 		}
 	}()
+	go func() {
+		for {
+			time.Sleep(time.Second * 2)
+			fmt.Println(w.Speed)
+		}
+	}()
 
 	// 发送
 	go func() {
@@ -159,7 +166,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 		}
 	}()
 
-	// 主进程发送
+	// 主进程通知发送
 	go func() {
 		var bias int64
 		for bias = int64(0); bias < fileSize; {
@@ -167,7 +174,7 @@ func (w *Write) sendData(fh *os.File, fileSize int64) (int64, error) {
 				senCh <- bias
 				bias = bias + int64(w.MTU-9)
 			} else {
-				time.Sleep(time.Millisecond * 5)
+				time.Sleep(time.Millisecond * 5) // 优先处理重发
 			}
 		}
 		// 最后包必达

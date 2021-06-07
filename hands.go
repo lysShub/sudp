@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/lysshub/sudp/internal/crypter"
-	"gitee.com/lysshub/sudp/internal/packet"
+	"sudp/internal/crypter"
+	"sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )
@@ -20,6 +20,9 @@ import (
 func (r *Read) sendHandshake(requestBody []byte) error {
 	var rda, sda []byte = make([]byte, 1500), make([]byte, 0, 64)
 	if r.conn, err = net.DialUDP("udp", r.Laddr, r.Raddr); e.Errlog(err) {
+		return err
+	}
+	if err = r.conn.SetReadBuffer(1024 * 1024 * 8); err != nil {
 		return err
 	}
 	var flag bool = true

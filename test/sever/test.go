@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"net"
 
-	"gitee.com/lysshub/sudp"
+	"sudp"
 )
 
 func main() {
 
 	// 发送
 	w, err := sudp.NewWrite(func(w *sudp.Write) *sudp.Write {
-		w.Laddr = &net.UDPAddr{IP: net.ParseIP("192.168.0.50"), Port: 19986} // HW st net.ParseIP("192.168.0.50")
+		w.Laddr = &net.UDPAddr{IP: nil, Port: 19986} // HW st net.ParseIP("192.168.0.50")
 		// w.Path = `/mnt/sdcard/a/Telegram.apk`
 		w.Path = `../../tmp/r/Telegram.apk`
-		// w.Path = `E:\浏览器下载\LibreOffice_7.1.1_Win_x64.msi`
+		w.Path = `E:\浏览器下载\LibreOffice_7.1.1_Win_x64.msi`
 		// w.Path = `C:\Users\LYS\Desktop\Telegram.apk`
 		w.Encrypt = false
 		return w

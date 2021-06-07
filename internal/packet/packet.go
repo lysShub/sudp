@@ -5,7 +5,7 @@ import (
 	"errors"
 	"hash/crc32"
 
-	"gitee.com/lysshub/sudp/internal/crypter"
+	"sudp/internal/crypter"
 )
 
 // PackagePacket 打包为协议包
