@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"sudp/internal/crypter"
-	"sudp/internal/packet"
+	"github.com/lysShub/sudp/internal/packet"
+
+	"github.com/lysShub/sudp/internal/crypter"
 
 	"github.com/lysShub/e"
 )

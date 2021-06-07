@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
-	"sudp/internal/com"
-	"sudp/internal/packet"
-	"sudp/speed"
+	"github.com/lysShub/sudp/speed"
+
+	"github.com/lysShub/sudp/internal/com"
+	"github.com/lysShub/sudp/internal/packet"
 
 	"github.com/lysShub/e"
 )

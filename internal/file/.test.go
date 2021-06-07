@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/lysShub/sudp/file"
+	"github.com/lysShub/sudp/packet"
 	"os"
 	"strconv"
-	"sudp/internal/file"
-	"sudp/internal/packet"
 	"time"
 )
 

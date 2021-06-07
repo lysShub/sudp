@@ -4,8 +4,8 @@ import (
 	"io"
 	"os"
 
-	"sudp/internal/com"
-	"sudp/internal/packet"
+	"github.com/lysShub/sudp/internal/com"
+	"github.com/lysShub/sudp/internal/packet"
 )
 
 var err error
