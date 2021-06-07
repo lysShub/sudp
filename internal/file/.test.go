@@ -1,12 +1,12 @@
 package main
 
 import (
-	"btest/sudp/internal/file"
-	"btest/sudp/internal/packet"
 	"bytes"
 	"fmt"
 	"os"
 	"strconv"
+	"sudp/internal/file"
+	"sudp/internal/packet"
 	"time"
 )
 

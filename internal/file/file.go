@@ -4,8 +4,8 @@ import (
 	"io"
 	"os"
 
-	"btest/sudp/internal/com"
-	"btest/sudp/internal/packet"
+	"sudp/internal/com"
+	"sudp/internal/packet"
 )
 
 var err error
