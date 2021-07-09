@@ -28,7 +28,7 @@ func CbcEncrypt(key []byte, p []byte) error {
 		return err
 	}
 
-	mode := cipher.NewCBCEncrypter(block, key) // key is also used as the initialization vector
+	mode := cipher.NewCBCEncrypter(block, key) // 密钥key作为初始化向量
 	mode.CryptBlocks(p[0:], p)
 
 	return nil
