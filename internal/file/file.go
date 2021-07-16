@@ -23,49 +23,45 @@ type Rd struct {
 	Fh *os.File
 
 	fs               int64    // 文件大小
-	initflag         bool     // 初始化标志
-	fm               bool     // 大文件缓存读取模式，文件大于48MB自动开启
+	fm               bool     // 大文件缓存读取模式，文件大于16MB自动开启
 	bs               int64    // 快速读取模式下的暂存数据块大小
-	block            []byte   // 缓存数据块
-	rang             [2]int64 // 记录block中数据的位置
+	block            []byte   // 缓存数据块 block
+	rang             [2]int64 // 记录block中数据对应的位置
 	smallProbability bool
 }
 
-// init 初始化函数
-func (r *Rd) init() error {
-	if !r.initflag {
+// NewRead
+func NewRead(fh *os.File) (*Rd, error) {
+	var r = new(Rd)
+	r.Fh = fh
 
-		fi, err := r.Fh.Stat()
-		if err != nil {
-			return err
-		}
-		r.fs = int64(fi.Size())
-		if (r.fs >> 24) >= 0b11 {
-			r.fm = true
-			r.bs = 4194304               //4194304 4MB
-			r.block = make([]byte, r.bs) //
-			if r.fs%r.bs == 0 {
-				r.smallProbability = true
-			}
-		} else {
-			r.fm = false
-		}
-		r.initflag = true
+	fi, err := r.Fh.Stat()
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	r.fs = int64(fi.Size())
+	if r.fs >= 4194304*4 {
+		r.fm = true
+		r.bs = 4194304 //4194304 4MB
+		r.block = make([]byte, r.bs)
+		if r.fs%r.bs == 0 {
+			r.smallProbability = true
+		}
+	} else {
+		r.fm = false
+	}
+
+	return r, nil
 }
 
 // ReadFile 读取文件；
 //   返回：打包好数据包，原始数据长度，是否最后包。
 //   参数d应该有足够的容量(len+15); 否则会浪费内存。正常情况下, 最后一个数据包读取的数据长度可能和len(d)不相同
 func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
-	if err = r.init(); err != nil {
-		return nil, 0, false, err
-	}
 
-	return r.randomRead(r.Fh, d, bias, key)
+	// return r.randomRead(r.Fh, d, bias, key)
 
-	// 启用快速读取模式
+	// 启用缓存模式
 	if r.fm {
 
 		if bias < r.rang[0] {
@@ -73,30 +69,31 @@ func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 		}
 
 		l := int64(len(d))
-		if r.rang[1] < bias+l-1 { // 读取到缓存块
-
+		if r.rang[1] < bias+l-1 { // 更新缓存
 			_, err := r.Fh.ReadAt(r.block, bias)
 			if err != nil {
-				if err == io.EOF { // 剩余文件不足以读取16MB的数据块
+				if err == io.EOF { // 剩余文件不足以读取为完整缓存块
 					return r.randomRead(r.Fh, d, bias, key)
 				} else if com.Errorlog(err) {
 					return nil, 0, false, err
 				}
 			}
 			r.rang[0], r.rang[1] = bias, bias+r.bs-1 // 更新记录
-
 		}
+
+		// 读取
 		copy(d, r.block[bias-r.rang[0]:])
 
-		// 16MB数据块恰好读完文件数据，且此数据包恰好读完数据块中最后数据
-		if r.smallProbability && bias+l+1 == r.fs {
+		// 数据块恰好缓存完文件最后部分数据，且此次读取恰好读完数据块中最后数据
+		if r.smallProbability && bias+l == r.fs {
 			return packet.PackagePacket(d, bias, key, true)
 		}
 		return packet.PackagePacket(d, bias, key, false)
+
+	} else {
+		return r.randomRead(r.Fh, d, bias, key)
 	}
 
-	// 不启用快速读取模式
-	return r.randomRead(r.Fh, d, bias, key)
 }
 
 var D []byte = make([]byte, 1372)
@@ -108,19 +105,19 @@ func (r *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, 
 		return nil, 0, false, err
 	}
 
-	_, err := fh.ReadAt(d, bias)
+	n, err := fh.ReadAt(d, bias)
 	if err != nil {
 		if err == io.EOF {
-			if r.fs-bias <= 1 {
-				d = nil
-				return nil, 0, true, nil
-			}
-			d = make([]byte, r.fs-bias, r.fs-bias+9)
-			_, err = fh.ReadAt(d, bias)
-			if err != nil {
-				return nil, 0, false, err
-			}
-			return packet.PackagePacket(d, bias, key, true)
+			// if r.fs-bias <= 1 {
+			// 	d = nil
+			// 	return nil, 0, true, nil
+			// }
+			// d = make([]byte, r.fs-bias, r.fs-bias+9)
+			// _, err = fh.ReadAt(d, bias)
+			// if err != nil {
+			// 	return nil, 0, false, err
+			// }
+			return packet.PackagePacket(d[:n], bias, key, true)
 
 		}
 		return nil, 0, false, err

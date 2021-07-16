@@ -17,8 +17,10 @@ import (
 // SendData 发送数据
 func (w *Write) SendData(fh *os.File, fileSize int64) (int64, error) {
 
-	r := new(file.Rd) // 读取器
-	r.Fh = fh
+	r, err := file.NewRead(fh)
+	if err != nil {
+		return 0, err
+	}
 
 	var errCh chan error = make(chan error, 2)    // 错误通知管道
 	var endCh chan int64 = make(chan int64, 1)    // 结束通知管道
