@@ -172,7 +172,7 @@ func (w *Write) SendData(fh *os.File, fileSize int64) (int64, error) {
 		// 最后包必达
 		for flag {
 			time.Sleep(time.Millisecond * 500)
-			senCh <- fileSize - 100
+			senCh <- fileSize - 1
 		}
 	}()
 
