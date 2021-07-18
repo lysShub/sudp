@@ -1,3 +1,5 @@
+// get ioer.Conn
+
 package ioer
 
 import (
@@ -6,15 +8,17 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
-// var pool map[int64]int64
-var pool map[[6]byte]io.PipeWriter // ListenUDP
-var listeners map[[6]byte]*Listener
+//  int64
+
+var readRouter map[int64]io.PipeWriter // ListenUDP
+var listeners map[int64]*Listener
 
 func init() {
-	pool = make(map[[6]byte]io.PipeWriter)
-	listeners = make(map[[6]byte]*Listener)
+	readRouter = make(map[int64]io.PipeWriter)
+	listeners = make(map[int64]*Listener)
 }
 
 type Listener struct {
@@ -27,6 +31,16 @@ type Listener struct {
 func Listen(laddr *net.UDPAddr) (*Listener, error) {
 	fmt.Println("Listen启动", laddr)
 
+	if laddr == nil || laddr.Port == 0 {
+		return nil, errors.New("invalid laddr")
+	} else if laddr.IP == nil {
+		if lip, err := getLanIP(); err != nil {
+			return nil, err
+		} else {
+			laddr.IP = lip
+		}
+	}
+
 	if l, ok := listeners[ider(laddr)]; ok {
 		fmt.Println("Listen已经存在")
 		return l, nil
@@ -38,6 +52,7 @@ func Listen(laddr *net.UDPAddr) (*Listener, error) {
 		var l = new(Listener)
 		l.lconn = conn
 		l.buffer = make([]byte, 65535)
+		listeners[ider(laddr)] = l
 		return l, nil
 	}
 }
@@ -64,7 +79,7 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 	}
 
 	var (
-		id    [6]byte
+		id    int64
 		r     io.PipeWriter
 		ok    bool
 		n     int
@@ -79,7 +94,7 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 			fmt.Println(raddr, "收到")
 
 			id = ider(raddr)
-			if r, ok = pool[id]; ok {
+			if r, ok = readRouter[id]; ok {
 				fmt.Println("存在")
 				r.Write(l.buffer[:n])
 
@@ -90,7 +105,7 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 				var wr *io.PipeWriter
 				re, wr = io.Pipe()
 
-				pool[id] = *wr
+				readRouter[id] = *wr
 
 				var c = new(Conn)
 				c.read = re
@@ -125,7 +140,7 @@ func Dial(laddr, raddr *net.UDPAddr) (*Conn, error) {
 	var wr *io.PipeWriter
 	re, wr = io.Pipe()
 
-	pool[ider(raddr)] = *wr
+	readRouter[ider(raddr)] = *wr
 
 	c.read = re
 	c.lconn = l.lconn
@@ -139,7 +154,7 @@ func (l *Listener) do() {
 	l.flagDo = true
 
 	var (
-		id    [6]byte
+		id    int64
 		r     io.PipeWriter
 		ok    bool
 		n     int
@@ -152,24 +167,30 @@ func (l *Listener) do() {
 			panic(err)
 		} else if n > 0 {
 			id = ider(raddr)
-			if r, ok = pool[id]; ok {
+			if r, ok = readRouter[id]; ok {
 				r.Write(l.buffer[:n])
 			}
 		}
 	}
 }
 
-func ider(addr *net.UDPAddr) [6]byte {
+func ider(addr *net.UDPAddr) int64 {
 	if addr == nil {
-		return [6]byte{0, 0, 0, 0, 0, 0}
+		return 0
 	} else {
 		addr.IP = addr.IP.To16()
-
 		if addr.IP == nil || len(addr.IP) < 16 {
-			fmt.Println("不合法IP", addr.IP)
-			return [6]byte{0, 0, 0, 0, byte(addr.Port >> 8), byte(addr.Port)}
+			return int64(addr.Port)
 		} else {
-			return [6]byte{addr.IP[12], addr.IP[13], addr.IP[14], addr.IP[15], byte(addr.Port >> 8), byte(addr.Port)}
+			return int64(addr.IP[12])<<+int64(addr.IP[13])<<32 + int64(addr.IP[14])<<24 + int64(addr.IP[15])<<16 + int64(addr.Port)
 		}
 	}
+}
+
+func getLanIP() (net.IP, error) {
+	conn, err := net.DialTimeout("ip4:1", "8.8.8.8", time.Second*2)
+	if err != nil {
+		return nil, err
+	}
+	return net.ParseIP(conn.LocalAddr().String()), nil
 }
