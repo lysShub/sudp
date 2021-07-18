@@ -36,7 +36,8 @@ func main() {
 				if n, err := conn.Read(da); err != nil {
 					panic(err)
 				} else {
-					fmt.Println("sever", string(da[:n]))
+					fmt.Println("sever收", string(da[:n]))
+					conn.Write([]byte("大师傅撒发生"))
 				}
 			}
 		}()
@@ -49,9 +50,18 @@ func Client() {
 	if err != nil {
 		panic(err)
 	}
+	go func() { // 收
+		var da []byte = make([]byte, 2000)
+		for {
+			if n, err := conn.Read(da); err != nil {
+				panic(err)
+			} else {
+				fmt.Println("client收：", string(da[:n]))
+			}
+		}
+	}()
 	for {
 		conn.Write([]byte("sadfsadfsa"))
 		time.Sleep(time.Second)
-		fmt.Println("发送")
 	}
 }

@@ -42,7 +42,6 @@ func Listen(laddr *net.UDPAddr) (*Listener, error) {
 	}
 
 	if l, ok := listeners[ider(laddr)]; ok {
-		fmt.Println("Listen已经存在")
 		return l, nil
 	}
 
@@ -63,7 +62,6 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 	}
 
 	if l.flagDo { // 接管 重启
-		fmt.Println("接管")
 
 		l.flagDo = false
 		laddr, err := net.ResolveUDPAddr("udp4", l.lconn.LocalAddr().String())
@@ -78,44 +76,43 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 		}
 	}
 
-	var (
-		id    int64
-		r     io.PipeWriter
-		ok    bool
-		n     int
-		raddr *net.UDPAddr
-		err   error
-	)
+	l.do(rCh)
 
-	for {
-		if n, raddr, err = l.lconn.ReadFromUDP(l.buffer); err != nil {
-			panic(err)
-		} else if n > 0 {
-			fmt.Println(raddr, "收到")
+	return nil
 
-			id = ider(raddr)
-			if r, ok = readRouter[id]; ok {
-				fmt.Println("存在")
-				r.Write(l.buffer[:n])
+	// var (
+	// 	id    int64
+	// 	r     io.PipeWriter
+	// 	ok    bool
+	// 	n     int
+	// 	raddr *net.UDPAddr
+	// 	err   error
+	// )
+	// for {
+	// 	if n, raddr, err = l.lconn.ReadFromUDP(l.buffer); err != nil {
+	// 		panic(err)
+	// 	} else if n > 0 {
 
-			} else {
-				fmt.Println("不存在")
+	// 		id = ider(raddr)
+	// 		if r, ok = readRouter[id]; ok {
+	// 			r.Write(l.buffer[:n]) // 可能会阻塞
 
-				var re *io.PipeReader
-				var wr *io.PipeWriter
-				re, wr = io.Pipe()
+	// 		} else {
 
-				readRouter[id] = *wr
+	// 			var re *io.PipeReader
+	// 			var wr *io.PipeWriter
+	// 			re, wr = io.Pipe()
 
-				var c = new(Conn)
-				c.read = re
-				c.lconn = l.lconn
-				c.raddr = raddr
-				rCh <- c
-			}
-			fmt.Println("完成")
-		}
-	}
+	// 			readRouter[id] = *wr
+
+	// 			var c = new(Conn)
+	// 			c.read = re
+	// 			c.lconn = l.lconn
+	// 			c.raddr = raddr
+	// 			rCh <- c
+	// 		}
+	// 	}
+	// }
 }
 
 var flag sync.Once
@@ -129,7 +126,7 @@ func Dial(laddr, raddr *net.UDPAddr) (*Conn, error) {
 
 	flag.Do(func() {
 		go func() {
-			l.do()
+			l.do(nil)
 		}()
 	})
 
@@ -150,7 +147,7 @@ func Dial(laddr, raddr *net.UDPAddr) (*Conn, error) {
 }
 
 // do 用于Dail的read
-func (l *Listener) do() {
+func (l *Listener) do(rCh chan *Conn) {
 	l.flagDo = true
 
 	var (
@@ -169,6 +166,19 @@ func (l *Listener) do() {
 			id = ider(raddr)
 			if r, ok = readRouter[id]; ok {
 				r.Write(l.buffer[:n])
+			} else if rCh != nil {
+
+				var re *io.PipeReader
+				var wr *io.PipeWriter
+				re, wr = io.Pipe()
+
+				readRouter[id] = *wr
+
+				var c = new(Conn)
+				c.read = re
+				c.lconn = l.lconn
+				c.raddr = raddr
+				rCh <- c
 			}
 		}
 	}
