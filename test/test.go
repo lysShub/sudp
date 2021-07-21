@@ -15,6 +15,15 @@ var blockSize int = 1204
 
 func main() {
 
+	var ip net.IP = net.ParseIP("a.b.c.d:p")
+
+	//      a    b    c    d     p
+	var m [][][][][]int = make([][][][][]int, 256)
+
+	m[170][168][192][9][323] = 99
+	fmt.Println(ip)
+	time.Sleep(time.Hour)
+	return
 	// client 请求
 	go Client()
 	time.Sleep(time.Second)

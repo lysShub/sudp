@@ -23,7 +23,7 @@ func init() {
 
 type Listener struct {
 	lconn  *net.UDPConn
-	buffer []byte
+	tmp    []byte
 	flagDo bool
 }
 
@@ -50,7 +50,7 @@ func Listen(laddr *net.UDPAddr) (*Listener, error) {
 	} else {
 		var l = new(Listener)
 		l.lconn = conn
-		l.buffer = make([]byte, 65535)
+		l.tmp = make([]byte, 65535)
 		listeners[ider(laddr)] = l
 		return l, nil
 	}
@@ -80,39 +80,6 @@ func (l *Listener) Accept(rCh chan *Conn) error {
 
 	return nil
 
-	// var (
-	// 	id    int64
-	// 	r     io.PipeWriter
-	// 	ok    bool
-	// 	n     int
-	// 	raddr *net.UDPAddr
-	// 	err   error
-	// )
-	// for {
-	// 	if n, raddr, err = l.lconn.ReadFromUDP(l.buffer); err != nil {
-	// 		panic(err)
-	// 	} else if n > 0 {
-
-	// 		id = ider(raddr)
-	// 		if r, ok = readRouter[id]; ok {
-	// 			r.Write(l.buffer[:n]) // 可能会阻塞
-
-	// 		} else {
-
-	// 			var re *io.PipeReader
-	// 			var wr *io.PipeWriter
-	// 			re, wr = io.Pipe()
-
-	// 			readRouter[id] = *wr
-
-	// 			var c = new(Conn)
-	// 			c.read = re
-	// 			c.lconn = l.lconn
-	// 			c.raddr = raddr
-	// 			rCh <- c
-	// 		}
-	// 	}
-	// }
 }
 
 var flag sync.Once
@@ -159,13 +126,14 @@ func (l *Listener) do(rCh chan *Conn) {
 		err   error
 	)
 	for l.flagDo {
-		if n, raddr, err = l.lconn.ReadFromUDP(l.buffer); err != nil {
+		if n, raddr, err = l.lconn.ReadFromUDP(l.tmp); err != nil {
 			// fmt.Fprint(os.Stderr, err)
 			panic(err)
 		} else if n > 0 {
 			id = ider(raddr)
 			if r, ok = readRouter[id]; ok {
-				r.Write(l.buffer[:n])
+				r.Write(l.tmp[:n]) // 写入可能会阻塞
+
 			} else if rCh != nil {
 
 				var re *io.PipeReader
