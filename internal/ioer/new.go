@@ -5,7 +5,6 @@ package ioer
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -13,11 +12,13 @@ import (
 
 //  int64
 
-var readRouter map[int64]io.PipeWriter // ListenUDP
+// var readRouter map[int64]io.PipeWriter // ListenUDP
+var readRouter map[int64]chan []byte // ListenUDP
 var listeners map[int64]*Listener
 
 func init() {
-	readRouter = make(map[int64]io.PipeWriter)
+	// readRouter = make(map[int64]io.PipeWriter)
+	readRouter = make(map[int64]chan []byte)
 	listeners = make(map[int64]*Listener)
 }
 
@@ -99,14 +100,16 @@ func Dial(laddr, raddr *net.UDPAddr) (*Conn, error) {
 
 	raddr.IP = raddr.IP.To4()
 
+	// var re *io.PipeReader
+	// var wr *io.PipeWriter
+	// re, wr = io.Pipe()
+
 	var c = new(Conn)
-	var re *io.PipeReader
-	var wr *io.PipeWriter
-	re, wr = io.Pipe()
+	var ch chan []byte = make(chan []byte, 16)
 
-	readRouter[ider(raddr)] = *wr
+	readRouter[ider(raddr)] = ch
 
-	c.read = re
+	c.read = ch
 	c.lconn = l.lconn
 	c.raddr = raddr
 
@@ -119,7 +122,7 @@ func (l *Listener) do(rCh chan *Conn) {
 
 	var (
 		id    int64
-		r     io.PipeWriter
+		r     chan []byte
 		ok    bool
 		n     int
 		raddr *net.UDPAddr
@@ -132,18 +135,22 @@ func (l *Listener) do(rCh chan *Conn) {
 		} else if n > 0 {
 			id = ider(raddr)
 			if r, ok = readRouter[id]; ok {
-				r.Write(l.tmp[:n]) // 写入可能会阻塞
+				// r.Write(l.tmp[:n]) // 写入可能会阻塞
+				select {
+				case r <- l.tmp[:n]:
+				}
 
 			} else if rCh != nil {
 
-				var re *io.PipeReader
-				var wr *io.PipeWriter
-				re, wr = io.Pipe()
+				// var re *io.PipeReader
+				// var wr *io.PipeWriter
+				// re, wr = io.Pipe()
 
-				readRouter[id] = *wr
+				var ch chan []byte = make(chan []byte, 16)
+				readRouter[id] = ch
 
 				var c = new(Conn)
-				c.read = re
+				c.read = ch
 				c.lconn = l.lconn
 				c.raddr = raddr
 				rCh <- c

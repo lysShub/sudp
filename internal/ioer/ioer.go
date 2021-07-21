@@ -1,7 +1,6 @@
 package ioer
 
 import (
-	"io"
 	"net"
 )
 
@@ -14,13 +13,14 @@ type Conn struct {
 	lconn *net.UDPConn // lister
 	raddr *net.UDPAddr
 
-	read *io.PipeReader
+	// read *io.PipeReader
+	read chan []byte
 }
 
 // Conn 读取数据
 func (c *Conn) Read(b []byte) (int, error) {
 
-	return c.read.Read(b)
+	return copy(b, <-c.read), nil
 
 }
 
