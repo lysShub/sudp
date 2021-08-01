@@ -74,7 +74,7 @@ func (r *Rd) ReadFile(d []byte, bias int64, key []byte) ([]byte, int64, bool, er
 			if err != nil {
 				if err == io.EOF { // 剩余文件不足以读取为完整缓存块
 					return r.randomRead(r.Fh, d, bias, key)
-				} else if com.Errorlog(err) {
+				} else if com.Errlog(err) {
 					return nil, 0, false, err
 				}
 			}
@@ -101,9 +101,9 @@ var D []byte = make([]byte, 1372)
 // readfile
 // 	随机读取，适配最后一包
 func (r *Rd) randomRead(fh *os.File, d []byte, bias int64, key []byte) ([]byte, int64, bool, error) {
-	if err = r.init(); err != nil {
-		return nil, 0, false, err
-	}
+	// if err = r.init(); err != nil {
+	// 	return nil, 0, false, err
+	// }
 
 	n, err := fh.ReadAt(d, bias)
 	if err != nil {

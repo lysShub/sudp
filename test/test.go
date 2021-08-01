@@ -15,14 +15,6 @@ var blockSize int = 1204
 
 func main() {
 
-	var ip net.IP = net.ParseIP("a.b.c.d:p")
-
-	//      a    b    c    d     p
-	var m [][][][][]int = make([][][][][]int, 256)
-
-	m[170][168][192][9][323] = 99
-	fmt.Println(ip)
-	time.Sleep(time.Hour)
 	return
 	// client 请求
 	go Client()
@@ -33,24 +25,25 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(l)
 
-	var rCh chan *ioer.Conn = make(chan *ioer.Conn)
-	go l.Accept(rCh)
+	// var rCh *ioer.Conn
+	// go l.Accept(rCh)
 
-	for tconn := range rCh {
-		var conn *ioer.Conn = tconn
-		go func() {
-			var da []byte = make([]byte, 1200)
-			for {
-				if n, err := conn.Read(da); err != nil {
-					panic(err)
-				} else {
-					fmt.Println("sever收", string(da[:n]))
-					conn.Write([]byte("大师傅撒发生"))
-				}
-			}
-		}()
-	}
+	// for tconn := range rCh {
+	// 	var conn *ioer.Conn = tconn
+	// 	go func() {
+	// 		var da []byte = make([]byte, 1200)
+	// 		for {
+	// 			if n, err := conn.Read(da); err != nil {
+	// 				panic(err)
+	// 			} else {
+	// 				fmt.Println("sever收", string(da[:n]))
+	// 				conn.Write([]byte("大师傅撒发生"))
+	// 			}
+	// 		}
+	// 	}()
+	// }
 	fmt.Println("退出")
 }
 

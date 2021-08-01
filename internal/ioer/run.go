@@ -14,12 +14,6 @@ import (
 
 var errClosed error = errors.New("connection closed")
 
-var listeners map[int64]*Listener // laddr Id
-
-func init() {
-	listeners = make(map[int64]*Listener)
-}
-
 // run 运行：1.路由接收到的UDP数据包; 2.接收新请求, 生成新的Conn
 func (l *Listener) run() {
 
@@ -38,7 +32,8 @@ func (l *Listener) run() {
 		} else if n > 0 {
 			id = ider(raddr)
 
-			if c, ok = l.conns[id]; !ok {
+			// 新链接
+			if c, ok = l.conns[id]; !ok { // 查询l.conns[id]会导致一定的性能下降
 				var ch chan []byte = make(chan []byte, 16)
 
 				c = new(Conn)

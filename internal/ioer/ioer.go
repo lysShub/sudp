@@ -6,9 +6,9 @@ import (
 	"sync"
 )
 
-// UDP的connected连接使得一个端口只能进行一个传输任务
-// 通过raddr实现端口复用；使用一个端口即可同时进行多条传输任务，异或同时进行接收与发送任务
-// 使用均listenUDP实现
+// net.DialUDP会占用一个端口, 导致不能进行端口复用
+// ioer的Dial和Accept实际均是使用net.ListenUDP实现
+// 因此可以进行端口复用, 只要四元组中有一元不一样都可以进行连接
 
 type Listener struct {
 	conns        map[int64]*Conn // raddr Id
@@ -21,6 +21,13 @@ type Listener struct {
 	done  bool         // 已关闭
 }
 
+var listeners map[int64]*Listener // laddr Id
+
+func init() {
+	listeners = make(map[int64]*Listener)
+}
+
+// Listen 监听本地地址, 不会阻塞
 func Listen(laddr *net.UDPAddr) (*Listener, error) {
 
 	if laddr == nil || laddr.Port == 0 {
@@ -58,7 +65,7 @@ func Listen(laddr *net.UDPAddr) (*Listener, error) {
 	}
 }
 
-// Accept 接收请求, 没用请求过来时可能会阻塞
+// Accept 接收请求, 会阻塞等待新的请求
 func (l *Listener) Accept() *Conn {
 	return <-l.rConn
 }
@@ -69,14 +76,14 @@ func (l *Listener) Close() error {
 	return l.lconn.Close()
 }
 
-// Conn 收发数据
+// Conn 表示一个链接
 type Conn struct {
-	lconn *net.UDPConn // lister
+	lconn *net.UDPConn // listenUDP
 	raddr *net.UDPAddr
 
-	io         chan []byte
-	listenerid int64 // Conn对应的Listener
-	done       bool  // Conn关闭字段
+	io         chan []byte // lconn读取到的数据向io中写入
+	listenerid int64
+	done       bool // Conn关闭flag
 }
 
 func Dial(laddr, raddr *net.UDPAddr) (*Conn, error) {
