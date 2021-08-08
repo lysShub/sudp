@@ -42,9 +42,14 @@ func (l *Listener) run() {
 				c.listenerid = ider(l.laddr)
 
 				select {
-				case l.rConn <- c: // 返回新Conn
+				case l.rConn <- c:
 				default:
 				}
+
+				// if len(l.rConn) < cap(l.rConn) {
+				// 	l.rConn <- c
+				// }
+
 			}
 
 			select {

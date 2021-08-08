@@ -2,18 +2,63 @@
 
 package ioer
 
+import (
+	"net"
+	"sync"
+)
+
 // 只支持IPv4
 // 由于暂时不考虑单连接多链路，所以Addr的端口是确定的
 // hash方法： ip[3]<<8+ip[4]
 
-type amap struct {
+type b struct {
+	ipd int64
+	c   *Conn
 }
 
-// 储存h
-type h = [65536]int
+type amap struct {
+	h    [65535][]b
+	lock sync.RWMutex
+}
 
-var mapk []h = make([][65536]int, 0, 10)
+// Add 追加
+func (a *amap) Add(addr *net.UDPAddr, c *Conn) {
+	if len(addr.IP) < 16 {
+		addr.IP = addr.IP.To16()
+	}
 
-// 储存v, mapv[0]不使用
-//  会一直累积, 超过容量可能会发生垃圾扫描
-var mapv []*Conn = make([]*Conn, 1, 256)
+	var ipd int64 = int64(addr.IP[12])<<+int64(addr.IP[13])<<32 + int64(addr.IP[14])<<24 + int64(addr.IP[15])<<16 + int64(addr.Port)
+
+	// HASH
+	// 8 8 8 8 16
+	// 2   2 8  4
+	// var k uint16 = uint16(((ipd>>40)&0x3)<<14 + ((ipd>>24)&0x3)<<12 + ((ipd>>16)&0xff)<<4 + ipd&0xf)
+	var k uint16 = uint16((ipd>>26)&0xC000 + (ipd>>12)&0x3000 + (ipd>>12)&0xff0 + ipd&0xf)
+
+	a.lock.Lock()
+	if a.h[k] == nil {
+		a.h[k] = make([]b, 0, 8)
+	}
+	a.h[k] = append(a.h[k], b{ipd: ipd, c: c})
+	a.lock.Unlock()
+}
+
+// Read 读取
+func (a *amap) Read(addr *net.UDPAddr) (*Conn, bool) {
+	if len(addr.IP) < 16 {
+		addr.IP = addr.IP.To16()
+	}
+
+	var ipd int64 = int64(addr.IP[12])<<+int64(addr.IP[13])<<32 + int64(addr.IP[14])<<24 + int64(addr.IP[15])<<16 + int64(addr.Port)
+	var k uint16 = uint16((ipd>>26)&0xC000 + (ipd>>12)&0x3000 + (ipd>>12)&0xff0 + ipd&0xf)
+	if a.h[k] == nil {
+		return nil, false
+	} else {
+		for _, v := range a.h[k] {
+			if v.ipd == ipd {
+				return v.c, true
+			}
+		}
+		return nil, false
+	}
+}
