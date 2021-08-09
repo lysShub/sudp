@@ -51,6 +51,7 @@ func (a *amap) Read(addr *net.UDPAddr) (*Conn, bool) {
 
 	var ipd int64 = int64(addr.IP[12])<<+int64(addr.IP[13])<<32 + int64(addr.IP[14])<<24 + int64(addr.IP[15])<<16 + int64(addr.Port)
 	var k uint16 = uint16((ipd>>26)&0xC000 + (ipd>>12)&0x3000 + (ipd>>12)&0xff0 + ipd&0xf)
+
 	if a.h[k] == nil {
 		return nil, false
 	} else {
@@ -60,5 +61,27 @@ func (a *amap) Read(addr *net.UDPAddr) (*Conn, bool) {
 			}
 		}
 		return nil, false
+	}
+}
+
+func (a *amap) Delete(addr *net.UDPAddr) {
+	if len(addr.IP) < 16 {
+		addr.IP = addr.IP.To16()
+	}
+
+	var ipd int64 = int64(addr.IP[12])<<+int64(addr.IP[13])<<32 + int64(addr.IP[14])<<24 + int64(addr.IP[15])<<16 + int64(addr.Port)
+	var k uint16 = uint16((ipd>>26)&0xC000 + (ipd>>12)&0x3000 + (ipd>>12)&0xff0 + ipd&0xf)
+
+	if a.h[k] == nil {
+		return
+	} else {
+		for n, v := range a.h[k] {
+			if v.ipd == ipd {
+				a.lock.Lock()
+				a.h[k] = append((a.h[k])[:n], (a.h[k])[n+1:]...)
+				a.lock.Unlock()
+				return
+			}
+		}
 	}
 }
