@@ -17,8 +17,8 @@ type Listener struct {
 	lconn *net.UDPConn // net.ListenUDP
 	laddr *net.UDPAddr // lconn的地址
 	rConn chan *Conn   // 通信新生成的Conn
-	tmp   []byte       // 临时存储
-	done  bool         // 已关闭
+	// tmp   []byte       // 临时存储
+	done bool // 已关闭
 }
 
 var listeners map[int64]*Listener // laddr Id
@@ -56,7 +56,7 @@ func Listen(laddr *net.UDPAddr) (*Listener, error) {
 
 		l.lconn = conn
 		l.rConn = rConn
-		l.tmp = make([]byte, 65536)
+		// l.tmp = make([]byte, 65536)
 		listeners[ider(laddr)] = l
 
 		go l.run()

@@ -24,9 +24,11 @@ func (l *Listener) run() {
 		n     int
 		raddr *net.UDPAddr
 		err   error
+		tmp   []byte = make([]byte, 65536)
 	)
+
 	for !l.done {
-		if n, raddr, err = l.lconn.ReadFromUDP(l.tmp); !l.done && err != nil {
+		if n, raddr, err = l.lconn.ReadFromUDP(tmp); !l.done && err != nil {
 			errlog(err)
 
 		} else if n > 0 {
@@ -45,15 +47,17 @@ func (l *Listener) run() {
 				case l.rConn <- c:
 				default:
 				}
-
 				// if len(l.rConn) < cap(l.rConn) {
 				// 	l.rConn <- c
 				// }
 
 			}
 
+			// if len(c.io) < cap(c.io) {
+			// 	c.io <- l.tmp[:n]
+			// }
 			select {
-			case c.io <- l.tmp[:n]: // 写入数据
+			case c.io <- tmp[:n]: // 写入数据
 			default:
 			}
 

@@ -2,6 +2,8 @@ github.com/gogs/chardet v0.0.0-20191104214054-4b6791f73a28 h1:gBeyun7mySAKWg7Fb0
 github.com/gogs/chardet v0.0.0-20191104214054-4b6791f73a28/go.mod h1:Pcatq5tYkCW2Q6yrR2VRHlbHpZ/R4/7qyL1TCF7vl14=
 github.com/lysShub/e v0.1.4 h1:U7EJG5ddlyCfbEqB4hYKsGvPZR47yxaw5A8RDSkM0Rg=
 github.com/lysShub/e v0.1.4/go.mod h1:QULN7XvfQTH+uBKp2yb52NKulE1gkloQVVrBC93Wgqg=
+github.com/lysShub/ioer v0.0.0-20210811090806-3e5959925011 h1:mvCWLD19WtgDK8ALq6XX/e4M5g7Wpnj7rjjA/6ikjN4=
+github.com/lysShub/ioer v0.0.0-20210811090806-3e5959925011/go.mod h1:C/Vtl/RZz5M+7WxQYsDlf9cG83MT9UqGftFbk4x3QvY=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 h1:qWPm9rbaAMKs8Bq/9LRpbMqxWRVUAQwMI9fVrssnTfw=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
