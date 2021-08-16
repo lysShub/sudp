@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lysShub/ioer/maps"
+	"github.com/lysShub/sudp/internal/ioer/maps"
 )
 
 // 测试maps和map的速度
